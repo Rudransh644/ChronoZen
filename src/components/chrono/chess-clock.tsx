@@ -193,7 +193,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
       onClick={() => handlePlayerTap(player)}
       disabled={!!winner || (isRunning && activePlayer !== player)}
       className={cn(
-        "w-full h-full flex flex-col items-center justify-center rounded-lg transition-all duration-300",
+        "w-full h-full flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-4",
         activePlayer === player ? 'bg-primary/20 scale-105 shadow-2xl' : 'bg-card',
         winner && winner !== player ? 'opacity-30' : '',
         player === 1 ? "sm:rounded-r-none" : "sm:rounded-l-none",
@@ -201,6 +201,9 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
         (isRunning && activePlayer !== player) ? 'cursor-not-allowed' : 'cursor-pointer'
       )}
     >
+      <div className={cn("absolute font-semibold text-muted-foreground", isFullScreen ? "top-4 text-xl" : "top-2 text-md")}>
+          Player {player}
+      </div>
       <div className={cn(
         "font-mono font-bold tracking-tighter tabular-nums",
         isFullScreen ? "text-8xl md:text-[10rem]" : "text-6xl md:text-8xl",
