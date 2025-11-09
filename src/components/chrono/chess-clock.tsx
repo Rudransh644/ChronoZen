@@ -33,13 +33,21 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef(0);
   const synthRef = useRef<Tone.Synth | null>(null);
+  const timeoutSynthRef = useRef<Tone.Synth | null>(null);
 
-  const playSound = async () => {
+  const playSound = async (type: 'switch' | 'timeout' = 'switch') => {
     await Tone.start();
-    if (!synthRef.current) {
-        synthRef.current = new Tone.Synth().toDestination();
+    if (type === 'switch') {
+        if (!synthRef.current) {
+            synthRef.current = new Tone.Synth().toDestination();
+        }
+        synthRef.current.triggerAttackRelease("C4", "8n");
+    } else {
+        if (!timeoutSynthRef.current) {
+            timeoutSynthRef.current = new Tone.Synth().toDestination();
+        }
+        timeoutSynthRef.current.triggerAttackRelease("A5", "4n");
     }
-    synthRef.current.triggerAttackRelease("C4", "8n");
   };
 
   const stopClock = useCallback(() => {
@@ -60,6 +68,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
         if (newTime <= 0) {
           stopClock();
           setWinner('Player 2');
+          playSound('timeout');
           return 0;
         }
         return newTime;
@@ -70,6 +79,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
         if (newTime <= 0) {
           stopClock();
           setWinner('Player 1');
+          playSound('timeout');
           return 0;
         }
         return newTime;
@@ -102,7 +112,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const switchPlayer = (player: 'player1' | 'player2') => {
     if (!isRunning || winner || activePlayer !== player) return;
-    playSound();
+    playSound('switch');
     setActivePlayer(player === 'player1' ? 'player2' : 'player1');
     lastTickRef.current = Date.now();
   };

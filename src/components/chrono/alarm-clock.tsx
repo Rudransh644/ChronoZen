@@ -30,12 +30,15 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
 
   const synthRef = useRef<Tone.Synth | null>(null);
   const triggeredAlarmsRef = useRef<Set<number>>(new Set());
-
+  
   useEffect(() => {
-    const update = () => setCurrentTime(new Date());
-    update();
-    const timerId = setInterval(update, 1000);
-    return () => clearInterval(timerId);
+    const isClient = typeof window !== 'undefined';
+    if(isClient) {
+        const update = () => setCurrentTime(new Date());
+        update();
+        const timerId = setInterval(update, 1000);
+        return () => clearInterval(timerId);
+    }
   }, []);
 
   const playSound = async () => {

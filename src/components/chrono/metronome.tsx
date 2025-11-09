@@ -21,6 +21,7 @@ export default function Metronome({ isFullScreen, setControls }: MetronomeProps)
   
   const loopRef = useRef<Tone.Loop | null>(null);
   const synthRef = useRef<Tone.MembraneSynth | null>(null);
+  const tapTimesRef = useRef<number[]>([]);
 
   const start = useCallback(async () => {
     await Tone.start();
@@ -47,6 +48,41 @@ export default function Metronome({ isFullScreen, setControls }: MetronomeProps)
       stop();
       setBpm(120);
   }, [stop]);
+
+  const handleTap = () => {
+    const now = Date.now();
+    tapTimesRef.current.push(now);
+    if (tapTimesRef.current.length > 4) {
+        tapTimesRef.current.shift();
+    }
+
+    if (tapTimesRef.current.length > 1) {
+        const intervals = [];
+        for (let i = 1; i < tapTimesRef.current.length; i++) {
+            intervals.push(tapTimesRef.current[i] - tapTimesRef.current[i - 1]);
+        }
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        if (avgInterval > 0) {
+            const newBpm = Math.round(60000 / avgInterval);
+            setBpm(Math.max(40, Math.min(240, newBpm)));
+        }
+    }
+    
+    // Give visual feedback on tap
+    setVisualBeat(true);
+    setTimeout(() => setVisualBeat(false), 100)
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === ' ') {
+            e.preventDefault();
+            handleTap();
+        }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (setControls) {
@@ -122,6 +158,8 @@ export default function Metronome({ isFullScreen, setControls }: MetronomeProps)
           step={1}
           className="[&>span:last-child]:bg-red-500"
         />
+        <Button variant="outline" className="w-full mt-4 btn-press" onClick={handleTap}>Tap Tempo</Button>
+        <p className="text-xs text-center text-muted-foreground mt-2">Or use spacebar</p>
       </div>
       
       <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>

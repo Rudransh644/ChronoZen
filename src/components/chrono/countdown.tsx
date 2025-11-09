@@ -55,6 +55,9 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
 
   const playSound = async () => {
     await Tone.start();
+    if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+    }
     if (!synthRef.current) {
       synthRef.current = new Tone.Synth().toDestination();
     }
@@ -89,6 +92,16 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
     stop();
     setTime(duration);
   }, [duration, stop]);
+
+  const setPreset = (minutes: number) => {
+    const newDuration = minutes * 60 * 1000;
+    setDuration(newDuration);
+    setTime(newDuration);
+    setInputHours('00');
+    setInputMinutes(String(minutes).padStart(2, '0'));
+    setInputSeconds('00');
+    stop();
+  }
 
   const handleSetTime = () => {
     const hours = parseInt(inputHours, 10) || 0;
@@ -130,6 +143,15 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
             <Progress value={progress} className="h-2 [&>div]:bg-violet-500" />
         </div>
       </div>
+      
+      {!isFullScreen && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPreset(5)}>5 min</Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(10)}>10 min</Button>
+            <Button variant="outline" size="sm" onClick={() => setPreset(30)}>30 min</Button>
+          </div>
+      )}
+
 
       <div className={cn("flex items-center gap-4 pt-4", isFullScreen ? "hidden" : "flex")}>
         <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white btn-press", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={time === 0}>
