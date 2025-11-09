@@ -68,9 +68,18 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const playClickSound = async () => {
     await Tone.start();
     if (!clickSoundRef.current) {
-        clickSoundRef.current = await new Tone.Player("/sounds/click.mp3").toDestination();
+        clickSoundRef.current = new Tone.Player({
+            url: "/sounds/click.mp3",
+            onload: () => {
+                // Ensure the player is ready before the first play
+                console.log("Chess clock click sound loaded.");
+            }
+        }).toDestination();
     }
-    clickSoundRef.current.start();
+    // Check if the player is loaded before starting
+    if (clickSoundRef.current.loaded) {
+        clickSoundRef.current.start();
+    }
     if(navigator.vibrate) navigator.vibrate(50);
   }
 
@@ -90,17 +99,18 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const handlePlayerTap = useCallback((player: Player) => {
     if (winner) return;
-
-    if (!isRunning) {
+    
+    // If the game hasn't started, the first tap starts it for the opponent.
+    if (!isRunning && activePlayer === null) {
         setIsRunning(true);
         const opponent = player === 1 ? 2 : 1;
         setActivePlayer(opponent);
-        lastTickRef.current = Date.now();
         playClickSound();
         return;
     }
     
-    if (player === activePlayer) {
+    // If it's the active player's turn, switch to the opponent.
+    if (isRunning && player === activePlayer) {
       const opponent = player === 1 ? 2 : 1;
       setActivePlayer(opponent);
       playClickSound();
@@ -148,9 +158,12 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const handleStartPause = () => {
     if (winner) return;
+    // This function is now only for explicit pausing/resuming if needed,
+    // but the main logic is in handlePlayerTap.
     if (isRunning) {
       stopTimer();
     } else {
+      // Can only resume if a player is active (game has started)
       if (player1Time > 0 && player2Time > 0 && activePlayer) {
         setIsRunning(true);
       }
@@ -178,13 +191,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const PlayerClock = ({ player, time }: { player: Player, time: number }) => (
     <motion.button
       onClick={() => handlePlayerTap(player)}
-      disabled={!!winner}
+      disabled={!!winner || (isRunning && activePlayer !== player)}
       className={cn(
         "w-full h-full flex flex-col items-center justify-center rounded-lg transition-all duration-300",
         activePlayer === player ? 'bg-primary/20 scale-105 shadow-2xl' : 'bg-card',
         winner && winner !== player ? 'opacity-30' : '',
         player === 1 ? "sm:rounded-r-none" : "sm:rounded-l-none",
-        isFullScreen ? '' : 'border'
+        isFullScreen ? '' : 'border',
+        (isRunning && activePlayer !== player) ? 'cursor-not-allowed' : 'cursor-pointer'
       )}
     >
       <div className={cn(
@@ -229,9 +243,6 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
       {!isFullScreen && (
         <div className="flex justify-center items-center gap-4">
-            <Button onClick={handleStartPause} className="w-28 btn-press" disabled={!activePlayer || !!winner}>
-                {isRunning ? <><Pause className="mr-2"/> Pause</> : <><Play className="mr-2"/> Start</>}
-            </Button>
             <Button variant="outline" onClick={reset} className="w-28 btn-press"><RotateCcw className="mr-2"/> Reset</Button>
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
