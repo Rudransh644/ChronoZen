@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Settings } from 'lucide-react';
+import { RotateCcw, Settings, Pause, Play } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [winner, setWinner] = useState<Player | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inputMinutes, setInputMinutes] = useState('5');
@@ -58,6 +59,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const reset = useCallback(() => {
     setIsRunning(false);
+    setIsPaused(false);
     setActivePlayer(null);
     setWinner(null);
     setPlayer1Time(initialTime);
@@ -71,12 +73,10 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
         clickSoundRef.current = new Tone.Player({
             url: "/sounds/click.mp3",
             onload: () => {
-                // Ensure the player is ready before the first play
                 console.log("Chess clock click sound loaded.");
             }
         }).toDestination();
     }
-    // Check if the player is loaded before starting
     if (clickSoundRef.current.loaded) {
         clickSoundRef.current.start();
     }
@@ -98,7 +98,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   }, []);
 
   const handlePlayerTap = useCallback((player: Player) => {
-    if (winner) return;
+    if (winner || isPaused) return;
     
     // If the game hasn't started, the first tap on either clock starts Player 1's timer.
     if (!isRunning && activePlayer === null) {
@@ -114,7 +114,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
       setActivePlayer(opponent);
       playClickSound();
     }
-  }, [isRunning, activePlayer, winner]);
+  }, [isRunning, activePlayer, winner, isPaused]);
 
   useEffect(() => {
       if (isRunning && activePlayer && !winner) {
@@ -155,25 +155,18 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   }, [isRunning, activePlayer, winner, stopTimer]);
 
 
-  const handleStartPause = () => {
-    if (winner) return;
-    if (isRunning) {
-      stopTimer();
-    } else {
-      if (player1Time > 0 && player2Time > 0 && activePlayer) {
-        setIsRunning(true);
-      } else if (activePlayer === null) { // Game hasn't started
-        setIsRunning(true);
-        setActivePlayer(1); // Start with player 1
-      }
-    }
+  const handlePauseResume = () => {
+    if (winner || activePlayer === null) return;
+    const nowPaused = !isPaused;
+    setIsPaused(nowPaused);
+    setIsRunning(!nowPaused);
   }
 
   useEffect(() => {
     if (setControls) {
-      setControls({ startStop: handleStartPause, reset });
+      setControls({ startStop: handlePauseResume, reset });
     }
-  }, [setControls, handleStartPause, reset]);
+  }, [setControls, handlePauseResume, reset]);
   
   const handleSetTime = () => {
     const newTime = (parseInt(inputMinutes) || 5) * 60 * 1000;
@@ -190,14 +183,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const PlayerClock = ({ player, time }: { player: Player, time: number }) => (
     <motion.button
       onClick={() => handlePlayerTap(player)}
-      disabled={!!winner || (isRunning && activePlayer !== player)}
+      disabled={!!winner || (isRunning && activePlayer !== player) || isPaused}
       className={cn(
         "w-full h-full flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-4",
-        activePlayer === player ? 'bg-primary/20 scale-105 shadow-2xl' : 'bg-card',
+        activePlayer === player && isRunning ? 'bg-primary/20 scale-105 shadow-2xl' : 'bg-card',
         winner && winner !== player ? 'opacity-30' : '',
         player === 1 ? "sm:rounded-r-none" : "sm:rounded-l-none",
         isFullScreen ? '' : 'border',
-        (isRunning && activePlayer !== player) ? 'cursor-not-allowed' : 'cursor-pointer'
+        (isRunning && activePlayer !== player) || isPaused ? 'cursor-not-allowed' : 'cursor-pointer'
       )}
     >
       <div className={cn("absolute font-semibold text-muted-foreground", isFullScreen ? "top-4 text-xl" : "top-2 text-md")}>
@@ -246,9 +239,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
       {!isFullScreen && (
         <div className="flex justify-center items-center gap-4">
             <Button variant="outline" onClick={reset} className="w-28 btn-press"><RotateCcw className="mr-2"/> Reset</Button>
+            
+            <Button size="icon" onClick={handlePauseResume} className="w-14 h-14 btn-press" disabled={!activePlayer || !!winner}>
+                {isPaused ? <Play /> : <Pause />}
+            </Button>
+            
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="btn-press"><Settings/></Button>
+                    <Button variant="ghost" size="icon" className="btn-press w-28"><Settings className="mr-2"/> Settings</Button>
                 </DialogTrigger>
                 <DialogContent>
                     <DialogHeader>
