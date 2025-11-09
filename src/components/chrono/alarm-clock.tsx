@@ -22,6 +22,8 @@ interface AlarmClockProps {
     isFullScreen: boolean;
 }
 
+const LOCAL_STORAGE_KEY = 'chronozen_alarms';
+
 export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
@@ -32,17 +34,34 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const triggeredAlarmsRef = useRef<Set<number>>(new Set());
   
   useEffect(() => {
-    const isClient = typeof window !== 'undefined';
-    if(isClient) {
-        const update = () => setCurrentTime(new Date());
-        update();
-        const timerId = setInterval(update, 1000);
-        return () => clearInterval(timerId);
+    try {
+        const savedAlarms = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedAlarms) {
+            setAlarms(JSON.parse(savedAlarms));
+        }
+    } catch (error) {
+        console.error("Failed to load alarms from localStorage", error);
     }
+
+    const update = () => setCurrentTime(new Date());
+    update();
+    const timerId = setInterval(update, 1000);
+    return () => clearInterval(timerId);
   }, []);
+  
+  useEffect(() => {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(alarms));
+      } catch (error) {
+        console.error("Failed to save alarms to localStorage", error);
+      }
+  }, [alarms])
 
   const playSound = async () => {
     await Tone.start();
+    if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+    }
     if (!synthRef.current) {
       synthRef.current = new Tone.Synth().toDestination();
     }
@@ -50,6 +69,8 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     synthRef.current.triggerAttackRelease("C5", "8n", now);
     synthRef.current.triggerAttackRelease("G5", "8n", now + 0.2);
     synthRef.current.triggerAttackRelease("C5", "8n", now + 0.4);
+    synthRef.current.triggerAttackRelease("G5", "8n", now + 0.6);
+    synthRef.current.triggerAttackRelease("C5", "8n", now + 0.8);
   };
 
   useEffect(() => {
@@ -62,10 +83,14 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
           playSound();
           alert(`Alarm: ${alarm.label}`);
           triggeredAlarmsRef.current.add(alarm.id);
-          toggleAlarm(alarm.id);
+          // Optional: auto-disable alarm after it triggers
+          // toggleAlarm(alarm.id); 
         }
       } else {
-        triggeredAlarmsRef.current.delete(alarm.id);
+        // Reset triggered status when time no longer matches
+        if (alarm.time !== currentHHMM) {
+          triggeredAlarmsRef.current.delete(alarm.id);
+        }
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -91,21 +91,24 @@ export default function Home() {
         if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
             return;
         }
-        e.preventDefault();
+        
         switch(e.key.toLowerCase()){
             case 's':
+                e.preventDefault();
                 toolControlsRef.startStop();
                 break;
             case 'r':
+                e.preventDefault();
                 toolControlsRef.reset();
                 break;
             case 'l':
-            case ' ':
                 if(activeTool === 'Stopwatch') {
+                    e.preventDefault();
                     toolControlsRef.lap();
                 }
                 break;
             case 'f':
+                e.preventDefault();
                 toggleFullScreen();
                 break;
         }

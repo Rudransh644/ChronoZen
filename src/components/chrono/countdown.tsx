@@ -19,7 +19,7 @@ import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
-
+const DURATION_KEY = 'chronozen_countdown_duration';
 const formatTime = (time: number) => {
   const seconds = `0${Math.floor((time / 1000) % 60)}`.slice(-2);
   const minutes = `0${Math.floor((time / (1000 * 60)) % 60)}`.slice(-2);
@@ -33,7 +33,7 @@ interface CountdownProps {
 }
 
 export default function Countdown({ isFullScreen, setControls }: CountdownProps) {
-  const [duration, setDuration] = useState(10 * 60 * 1000); // 10 minutes
+  const [duration, setDuration] = useState(10 * 60 * 1000); // Default 10 minutes
   const [time, setTime] = useState(duration);
   const [isRunning, setIsRunning] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -45,6 +45,27 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef(0);
   const synthRef = useRef<Tone.Synth | null>(null);
+
+  useEffect(() => {
+    try {
+        const savedDuration = localStorage.getItem(DURATION_KEY);
+        if (savedDuration) {
+            const newDuration = parseInt(savedDuration, 10);
+            setDuration(newDuration);
+            setTime(newDuration);
+            setInputHours(String(Math.floor(newDuration / 3600000)).padStart(2, '0'));
+            setInputMinutes(String(Math.floor((newDuration % 3600000) / 60000)).padStart(2, '0'));
+            setInputSeconds(String(Math.floor((newDuration % 60000) / 1000)).padStart(2, '0'));
+        }
+    } catch (e) { console.error(e); }
+  }, []);
+
+  useEffect(() => {
+    try {
+        localStorage.setItem(DURATION_KEY, String(duration));
+    } catch (e) { console.error(e); }
+  }, [duration]);
+
 
   const stop = useCallback(() => {
     if (intervalRef.current) {

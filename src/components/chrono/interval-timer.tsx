@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 type Phase = 'work' | 'rest';
+const SETTINGS_KEY = 'chronozen_interval_settings';
 
 const formatTime = (time: number) => {
   const seconds = `0${Math.floor((time / 1000) % 60)}`.slice(-2);
@@ -39,6 +40,27 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
   const endTimeRef = useRef(0);
   const synthRef = useRef<Tone.Synth | null>(null);
 
+  useEffect(() => {
+    try {
+        const savedSettings = localStorage.getItem(SETTINGS_KEY);
+        if (savedSettings) {
+            const { work, rest, intervals } = JSON.parse(savedSettings);
+            setWorkDuration(work);
+            setRestDuration(rest);
+            setTotalIntervals(intervals);
+            setTime(work);
+        }
+    } catch (e) { console.error(e) }
+  }, []);
+
+  useEffect(() => {
+    try {
+        const settings = { work: workDuration, rest: restDuration, intervals: totalIntervals };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) { console.error(e) }
+  }, [workDuration, restDuration, totalIntervals]);
+
+
   const playSound = async (note: string) => {
     await Tone.start();
     if (!synthRef.current) synthRef.current = new Tone.Synth().toDestination();
@@ -56,12 +78,6 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
     setCurrentPhase('work');
     setTime(workDuration);
   }, [stop, workDuration]);
-  
-  const start = useCallback(() => {
-    setIsRunning(true);
-    endTimeRef.current = Date.now() + time;
-    // The interval logic is now handled in the main useEffect
-  }, [time]);
   
   const nextPhase = useCallback(() => {
     stop();
@@ -90,6 +106,10 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
     }
   }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, stop]);
 
+  const start = useCallback(() => {
+    setIsRunning(true);
+    endTimeRef.current = Date.now() + time;
+  }, [time]);
 
   const handleStartStop = useCallback(() => {
     if (isRunning) {

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
+const BPM_KEY = 'chronozen_metronome_bpm';
+
 interface MetronomeProps {
     isFullScreen: boolean;
     setControls?: (controls: { startStop: () => void; reset: () => void; }) => void;
@@ -22,6 +24,21 @@ export default function Metronome({ isFullScreen, setControls }: MetronomeProps)
   const loopRef = useRef<Tone.Loop | null>(null);
   const synthRef = useRef<Tone.MembraneSynth | null>(null);
   const tapTimesRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    try {
+        const savedBpm = localStorage.getItem(BPM_KEY);
+        if (savedBpm) {
+            setBpm(parseInt(savedBpm, 10));
+        }
+    } catch (e) { console.error(e) }
+  }, []);
+
+  useEffect(() => {
+    try {
+        localStorage.setItem(BPM_KEY, String(bpm));
+    } catch (e) { console.error(e) }
+  }, [bpm]);
 
   const start = useCallback(async () => {
     await Tone.start();
@@ -75,7 +92,10 @@ export default function Metronome({ isFullScreen, setControls }: MetronomeProps)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === ' ') {
+        if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            return;
+        }
+        if (e.key === ' ' && !e.repeat) {
             e.preventDefault();
             handleTap();
         }
