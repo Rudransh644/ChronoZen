@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const formatTime = (time: number) => {
   const milliseconds = `00${time % 1000}`.slice(-3, -1);
@@ -12,7 +13,11 @@ const formatTime = (time: number) => {
   return `${hours}:${minutes}:${seconds}.${milliseconds}`;
 };
 
-export default function Stopwatch() {
+interface StopwatchProps {
+    isFullScreen: boolean;
+}
+
+export default function Stopwatch({ isFullScreen }: StopwatchProps) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -51,7 +56,10 @@ export default function Stopwatch() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-8 w-full">
-      <div className="font-mono text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-foreground tabular-nums">
+      <div className={cn(
+          "font-mono font-bold tracking-tight text-foreground tabular-nums",
+          isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-5xl sm:text-7xl md:text-8xl"
+      )}>
         {formatTime(time)}
       </div>
       <div className="flex items-center gap-4">

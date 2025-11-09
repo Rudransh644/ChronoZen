@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Play, Pause } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { cn } from '@/lib/utils';
 
-export default function Metronome() {
+interface MetronomeProps {
+    isFullScreen: boolean;
+}
+
+export default function Metronome({ isFullScreen }: MetronomeProps) {
   const [bpm, setBpm] = useState(120);
   const [isRunning, setIsRunning] = useState(false);
   
@@ -19,12 +24,14 @@ export default function Metronome() {
     if (!synthRef.current) {
       synthRef.current = new Tone.MembraneSynth().toDestination();
     }
-    await Tone.Transport.start();
+    if (Tone.Transport.state !== 'started') {
+        await Tone.Transport.start();
+    }
     setIsRunning(true);
   }, []);
 
   const stop = useCallback(() => {
-    Tone.Transport.stop();
+    Tone.Transport.pause();
     setIsRunning(false);
   }, []);
 
@@ -41,7 +48,9 @@ export default function Metronome() {
       Tone.Transport.stop();
       Tone.Transport.cancel();
       loopRef.current?.dispose();
+      synthRef.current?.dispose();
       loopRef.current = null;
+      synthRef.current = null;
     };
   }, []);
   
@@ -56,7 +65,10 @@ export default function Metronome() {
             <CardTitle className="text-center text-muted-foreground text-sm uppercase tracking-widest">BPM</CardTitle>
         </CardHeader>
         <CardContent>
-            <div className="font-mono text-8xl font-bold tracking-tight text-center text-foreground tabular-nums">
+            <div className={cn(
+                "font-mono font-bold tracking-tight text-center text-foreground tabular-nums",
+                isFullScreen ? "text-9xl" : "text-8xl"
+                )}>
                 {bpm}
             </div>
         </CardContent>

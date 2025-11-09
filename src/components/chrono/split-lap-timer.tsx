@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, Flag } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const formatTime = (time: number, withMs = true) => {
   const milliseconds = withMs ? `.${`00${time % 1000}`.slice(-3, -1)}` : '';
@@ -15,7 +16,11 @@ const formatTime = (time: number, withMs = true) => {
   return `${hours}:${minutes}:${seconds}${milliseconds}`;
 };
 
-export default function SplitLapTimer() {
+interface SplitLapTimerProps {
+    isFullScreen: boolean;
+}
+
+export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
   const [time, setTime] = useState(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -63,10 +68,16 @@ export default function SplitLapTimer() {
   return (
     <div className="flex flex-col items-center justify-between h-full w-full max-w-md mx-auto p-4 gap-6">
       <div className="w-full text-center">
-        <div className="font-mono text-5xl sm:text-7xl font-bold tracking-tight text-foreground tabular-nums">
+        <div className={cn(
+            "font-mono font-bold tracking-tight text-foreground tabular-nums",
+            isFullScreen ? "text-7xl sm:text-8xl" : "text-5xl sm:text-7xl"
+        )}>
           {formatTime(time)}
         </div>
-        <div className="font-mono text-2xl text-muted-foreground tabular-nums">
+        <div className={cn(
+            "font-mono text-muted-foreground tabular-nums",
+            isFullScreen ? "text-4xl" : "text-2xl"
+            )}>
           {laps.length > 0 ? formatTime(time - lastLapTimeRef.current) : formatTime(0)}
         </div>
       </div>

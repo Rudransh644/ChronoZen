@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, Users } from 'lucide-react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as Tone from 'tone';
 
@@ -18,7 +18,11 @@ const formatTime = (time: number) => {
 
 const DURATION = 5 * 60 * 1000; // 5 minutes
 
-export default function ChessClock() {
+interface ChessClockProps {
+    isFullScreen: boolean;
+}
+
+export default function ChessClock({ isFullScreen }: ChessClockProps) {
   const [player1Time, setPlayer1Time] = useState(DURATION);
   const [player2Time, setPlayer2Time] = useState(DURATION);
   const [activePlayer, setActivePlayer] = useState<'player1' | 'player2' | null>(null);
@@ -42,7 +46,6 @@ export default function ChessClock() {
       clearInterval(intervalRef.current);
     }
     setIsRunning(false);
-    setActivePlayer(null);
   }, []);
 
   const tick = useCallback(() => {
@@ -72,19 +75,20 @@ export default function ChessClock() {
       });
     }
   }, [activePlayer, stopClock]);
-
-  const startClock = () => {
-    if (winner) return;
-    setIsRunning(true);
-    if (!activePlayer) {
-      setActivePlayer('player1');
-    }
+  
+  const startClock = useCallback(() => {
+      if (winner || isRunning) return;
+      setIsRunning(true);
+      if (!activePlayer) {
+          setActivePlayer('player1');
+        }
     lastTickRef.current = Date.now();
+    if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 100);
-  };
+  }, [winner, isRunning, activePlayer, tick]);
   
   const switchPlayer = (player: 'player1' | 'player2') => {
-    if (!isRunning || winner) return;
+    if (!isRunning || winner || activePlayer !== player) return;
     playSound();
     setActivePlayer(player === 'player1' ? 'player2' : 'player1');
     lastTickRef.current = Date.now();
@@ -92,6 +96,7 @@ export default function ChessClock() {
 
   const resetClock = () => {
     stopClock();
+    setActivePlayer(null);
     setPlayer1Time(DURATION);
     setPlayer2Time(DURATION);
     setWinner(null);
@@ -102,21 +107,28 @@ export default function ChessClock() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
+  
+  const pauseClock = () => {
+      stopClock();
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 w-full h-full">
+    <div className={cn("flex flex-col items-center justify-center gap-4 w-full", isFullScreen ? "h-full" : "")}>
         {winner && <div className="text-2xl font-bold text-green-600 mb-4">{winner} wins!</div>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full h-full flex-1">
+      <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 w-full flex-1", isFullScreen ? "h-full" : "")}>
         <button
           onClick={() => switchPlayer('player1')}
           disabled={!isRunning || activePlayer !== 'player1'}
           className={cn(
             'flex flex-col items-center justify-center p-8 rounded-lg transition-colors duration-300 w-full h-full',
-            activePlayer === 'player1' ? 'bg-green-200' : 'bg-card',
+            activePlayer === 'player1' ? 'bg-green-200 dark:bg-green-800/50' : 'bg-card',
             'disabled:opacity-50 disabled:cursor-not-allowed border-2'
           )}
         >
-          <div className="font-mono text-5xl sm:text-7xl font-bold tracking-tight text-foreground tabular-nums">
+          <div className={cn(
+              "font-mono font-bold tracking-tight text-foreground tabular-nums",
+              isFullScreen ? "text-8xl" : "text-5xl sm:text-7xl"
+              )}>
             {formatTime(player1Time)}
           </div>
           <div className="text-lg text-muted-foreground mt-2">Player 1</div>
@@ -127,11 +139,14 @@ export default function ChessClock() {
           disabled={!isRunning || activePlayer !== 'player2'}
           className={cn(
             'flex flex-col items-center justify-center p-8 rounded-lg transition-colors duration-300 w-full h-full',
-            activePlayer === 'player2' ? 'bg-green-200' : 'bg-card',
+            activePlayer === 'player2' ? 'bg-green-200 dark:bg-green-800/50' : 'bg-card',
             'disabled:opacity-50 disabled:cursor-not-allowed border-2'
           )}
         >
-          <div className="font-mono text-5xl sm:text-7xl font-bold tracking-tight text-foreground tabular-nums">
+          <div className={cn(
+              "font-mono font-bold tracking-tight text-foreground tabular-nums",
+              isFullScreen ? "text-8xl" : "text-5xl sm:text-7xl"
+            )}>
             {formatTime(player2Time)}
           </div>
           <div className="text-lg text-muted-foreground mt-2">Player 2</div>
@@ -144,7 +159,7 @@ export default function ChessClock() {
             <Play className="mr-2 h-5 w-5" /> Start
           </Button>
         ) : (
-          <Button size="lg" onClick={stopClock} className="w-32 bg-red-500 hover:bg-red-600 text-white">
+          <Button size="lg" onClick={pauseClock} className="w-32 bg-red-500 hover:bg-red-600 text-white">
             <Pause className="mr-2 h-5 w-5" /> Pause
           </Button>
         )}

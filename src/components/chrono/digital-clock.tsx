@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
-export default function DigitalClock() {
+interface DigitalClockProps {
+    isFullScreen: boolean;
+}
+
+export default function DigitalClock({ isFullScreen }: DigitalClockProps) {
   const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -21,10 +26,16 @@ export default function DigitalClock() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-center">
-      <div className="font-mono text-6xl sm:text-8xl md:text-9xl font-bold tracking-tight text-foreground tabular-nums">
+      <div className={cn(
+          "font-mono font-bold tracking-tight text-foreground tabular-nums",
+           isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-6xl sm:text-8xl md:text-9xl"
+        )}>
         {time ? formatTime(time) : '00:00:00'}
       </div>
-      <div className="text-lg sm:text-xl text-muted-foreground">
+      <div className={cn(
+          "text-muted-foreground",
+          isFullScreen ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl"
+        )}>
         {time ? formatDate(time) : 'Loading...'}
       </div>
     </div>

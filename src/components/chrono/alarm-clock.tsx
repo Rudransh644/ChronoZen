@@ -9,6 +9,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '../ui/card';
 import { Label } from '../ui/label';
+import { cn } from '@/lib/utils';
 
 interface Alarm {
   id: number;
@@ -17,7 +18,11 @@ interface Alarm {
   enabled: boolean;
 }
 
-export default function AlarmClockTool() {
+interface AlarmClockProps {
+    isFullScreen: boolean;
+}
+
+export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [newAlarmTime, setNewAlarmTime] = useState('07:00');
@@ -60,6 +65,7 @@ export default function AlarmClockTool() {
         triggeredAlarmsRef.current.delete(alarm.id);
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTime, alarms]);
   
   const addAlarm = () => {
@@ -81,10 +87,13 @@ export default function AlarmClockTool() {
   return (
     <div className="flex flex-col h-full w-full max-w-lg mx-auto p-4 gap-4">
       <div className="text-center">
-        <div className="font-mono text-6xl font-bold tracking-tight text-foreground tabular-nums">
+        <div className={cn(
+            "font-mono font-bold tracking-tight text-foreground tabular-nums",
+            isFullScreen ? "text-8xl" : "text-6xl"
+        )}>
           {currentTime ? currentTime.toLocaleTimeString() : '...'}
         </div>
-        <div className="text-lg text-muted-foreground">
+        <div className={cn("text-muted-foreground", isFullScreen ? "text-2xl" : "text-lg")}>
           {currentTime ? currentTime.toDateString() : '...'}
         </div>
       </div>

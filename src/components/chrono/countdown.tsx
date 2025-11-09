@@ -14,9 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Progress } from '../ui/progress';
+import { cn } from '@/lib/utils';
 
 const formatTime = (time: number) => {
   const seconds = `0${Math.floor((time / 1000) % 60)}`.slice(-2);
@@ -25,7 +25,11 @@ const formatTime = (time: number) => {
   return `${hours}:${minutes}:${seconds}`;
 };
 
-export default function Countdown() {
+interface CountdownProps {
+    isFullScreen: boolean;
+}
+
+export default function Countdown({ isFullScreen }: CountdownProps) {
   const [duration, setDuration] = useState(10 * 60 * 1000); // 10 minutes
   const [time, setTime] = useState(duration);
   const [isRunning, setIsRunning] = useState(false);
@@ -38,6 +42,21 @@ export default function Countdown() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef(0);
   const synthRef = useRef<Tone.Synth | null>(null);
+
+  const stop = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    setIsRunning(false);
+  }, []);
+
+  const playSound = async () => {
+    await Tone.start();
+    if (!synthRef.current) {
+      synthRef.current = new Tone.Synth().toDestination();
+    }
+    synthRef.current.triggerAttackRelease("C5", "0.5s");
+  };
 
   const start = useCallback(() => {
     if (time <= 0) return;
@@ -53,27 +72,12 @@ export default function Countdown() {
         setTime(newTime);
       }
     }, 50);
-  }, [time]);
-
-  const stop = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    setIsRunning(false);
-  }, []);
+  }, [time, stop]);
 
   const reset = useCallback(() => {
     stop();
     setTime(duration);
   }, [duration, stop]);
-
-  const playSound = async () => {
-    await Tone.start();
-    if (!synthRef.current) {
-      synthRef.current = new Tone.Synth().toDestination();
-    }
-    synthRef.current.triggerAttackRelease("C5", "0.5s");
-  };
 
   const handleSetTime = () => {
     const hours = parseInt(inputHours, 10) || 0;
@@ -99,7 +103,10 @@ export default function Countdown() {
   return (
     <div className="flex flex-col items-center justify-center gap-8 w-full">
       <div className="relative w-full max-w-md">
-        <div className="font-mono text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-foreground tabular-nums text-center">
+        <div className={cn(
+            "font-mono font-bold tracking-tight text-foreground tabular-nums text-center",
+            isFullScreen ? "text-7xl sm:text-9xl md:text-[10rem]" : "text-5xl sm:text-7xl md:text-8xl"
+        )}>
             {formatTime(time)}
         </div>
         <Progress value={progress} className="mt-4 h-2" />

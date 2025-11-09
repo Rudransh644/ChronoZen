@@ -5,9 +5,10 @@ import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, RotateCcw, Settings, Forward, Repeat as RepeatIcon } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, Forward } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 type Phase = 'work' | 'rest';
 
@@ -17,7 +18,11 @@ const formatTime = (time: number) => {
   return `${minutes}:${seconds}`;
 };
 
-export default function IntervalTimer() {
+interface IntervalTimerProps {
+    isFullScreen: boolean;
+}
+
+export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
   const [workDuration, setWorkDuration] = useState(25 * 60 * 1000);
   const [restDuration, setRestDuration] = useState(5 * 60 * 1000);
   const [totalIntervals, setTotalIntervals] = useState(4);
@@ -38,22 +43,36 @@ export default function IntervalTimer() {
     synthRef.current.triggerAttackRelease(note, "0.5s");
   };
 
+  const stop = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setIsRunning(false);
+  }, []);
+
+  const reset = useCallback(() => {
+    stop();
+    setCurrentInterval(1);
+    setCurrentPhase('work');
+    setTime(workDuration);
+  }, [stop, workDuration]);
+
   const nextPhase = useCallback(() => {
+    stop();
     if (currentPhase === 'work' && currentInterval <= totalIntervals) {
       setCurrentPhase('rest');
       setTime(restDuration);
+      if (isRunning) start();
       playSound("E5");
     } else if (currentPhase === 'rest' && currentInterval < totalIntervals) {
       setCurrentPhase('work');
       setTime(workDuration);
       setCurrentInterval(prev => prev + 1);
+       if (isRunning) start();
       playSound("C5");
     } else {
-      // End of all intervals
       reset();
       playSound("G5");
     }
-  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration]);
+  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset]);
 
   const start = useCallback(() => {
     setIsRunning(true);
@@ -68,22 +87,9 @@ export default function IntervalTimer() {
     }, 50);
   }, [time, nextPhase]);
 
-  const stop = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setIsRunning(false);
-  }, []);
-
-  const reset = useCallback(() => {
-    stop();
-    setCurrentInterval(1);
-    setCurrentPhase('work');
-    setTime(workDuration);
-  }, [stop, workDuration]);
-
   const skip = useCallback(() => {
-    stop();
     nextPhase();
-  }, [stop, nextPhase]);
+  }, [nextPhase]);
 
   const handleSetIntervals = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -94,14 +100,15 @@ export default function IntervalTimer() {
     const restSecs = parseInt(formData.get('rest-seconds') as string) || 0;
     const intervals = parseInt(formData.get('intervals') as string) || 1;
     
-    setWorkDuration((workMins * 60 + workSecs) * 1000);
+    const newWorkDuration = (workMins * 60 + workSecs) * 1000;
+    setWorkDuration(newWorkDuration);
     setRestDuration((restMins * 60 + restSecs) * 1000);
     setTotalIntervals(intervals);
     
     stop();
     setCurrentInterval(1);
     setCurrentPhase('work');
-    setTime((workMins * 60 + workSecs) * 1000);
+    setTime(newWorkDuration);
 
     setIsDialogOpen(false);
   };
@@ -115,11 +122,18 @@ export default function IntervalTimer() {
   
   return (
     <div className="flex flex-col items-center justify-center gap-6 w-full text-center">
-      <div className={`text-2xl font-semibold uppercase tracking-widest rounded-full px-4 py-1 ${currentPhase === 'work' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+      <div className={cn(
+          'font-semibold uppercase tracking-widest rounded-full px-4 py-1', 
+          currentPhase === 'work' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800',
+          isFullScreen ? 'text-4xl px-6 py-2' : 'text-2xl'
+        )}>
         {currentPhase}
       </div>
 
-      <div className="font-mono text-6xl sm:text-8xl font-bold tracking-tight text-foreground tabular-nums">
+      <div className={cn(
+          "font-mono font-bold tracking-tight text-foreground tabular-nums",
+          isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-6xl sm:text-8xl"
+        )}>
         {formatTime(time)}
       </div>
 
