@@ -7,13 +7,15 @@ import { cn } from '@/lib/utils';
 import * as Tone from 'tone';
 
 const formatTime = (time: number) => {
-  const seconds = `0${Math.floor((time / 1000) % 60)}`.slice(-2);
-  const minutes = `0${Math.floor((time / (1000 * 60)) % 60)}`.slice(-2);
-  const hours = `0${Math.floor(time / (1000 * 60 * 60))}`.slice(-2);
-  if (parseInt(hours) > 0) {
-      return `${hours}:${minutes}:${seconds}`;
+  const totalSeconds = Math.floor(time / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
-  return `${minutes}:${seconds}`;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
 const DURATION = 5 * 60 * 1000; // 5 minutes
@@ -32,19 +34,19 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTickRef = useRef(0);
-  const synthRef = useRef<Tone.Synth | null>(null);
+  const switchSynthRef = useRef<Tone.Synth | null>(null);
   const timeoutSynthRef = useRef<Tone.Synth | null>(null);
 
-  const playSound = async (type: 'switch' | 'timeout' = 'switch') => {
+  const playSound = async (type: 'switch' | 'timeout') => {
     await Tone.start();
     if (navigator.vibrate) {
         navigator.vibrate(type === 'switch' ? 50 : [200, 100, 200]);
     }
     if (type === 'switch') {
-        if (!synthRef.current) {
-            synthRef.current = new Tone.Synth().toDestination();
+        if (!switchSynthRef.current) {
+            switchSynthRef.current = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
         }
-        synthRef.current.triggerAttackRelease("C4", "8n");
+        switchSynthRef.current.triggerAttackRelease("C4", "8n");
     } else {
         if (!timeoutSynthRef.current) {
             timeoutSynthRef.current = new Tone.Synth().toDestination();
@@ -91,7 +93,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   }, [activePlayer, stopClock]);
   
   const startClock = useCallback(() => {
-      if (winner || isRunning) return;
+      if (winner) return;
       setIsRunning(true);
       if (!activePlayer) {
           setActivePlayer('player1');
@@ -99,7 +101,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
     lastTickRef.current = Date.now();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 100);
-  }, [winner, isRunning, activePlayer, tick]);
+  }, [winner, activePlayer, tick]);
   
   const pauseClock = () => {
       stopClock();
@@ -111,10 +113,13 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
     } else {
         startClock();
     }
-  }, [isRunning, startClock]);
+  }, [isRunning, startClock, pauseClock]);
 
   const switchPlayer = (player: 'player1' | 'player2') => {
     if (!isRunning || winner || activePlayer !== player) return;
+    
+    // Increment logic would go here
+    
     playSound('switch');
     setActivePlayer(player === 'player1' ? 'player2' : 'player1');
     lastTickRef.current = Date.now();
@@ -126,6 +131,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
     setPlayer1Time(DURATION);
     setPlayer2Time(DURATION);
     setWinner(null);
+    setIsRunning(false);
   };
   
   useEffect(() => {
@@ -142,42 +148,48 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   return (
     <div className={cn("flex flex-col items-center justify-center gap-4 w-full h-full")}>
-        {winner && <div className="text-2xl font-bold text-green-500 mb-4 absolute top-1/4">{winner} wins!</div>}
+        {winner && (
+          <div className="absolute top-1/4 z-10 text-center">
+            <h2 className="text-4xl font-bold text-green-500 drop-shadow-lg">
+                {winner} wins!
+            </h2>
+          </div>
+        )}
       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 w-full flex-1", isFullScreen ? "h-full" : "")}>
         <button
-          onClick={() => switchPlayer('player1')}
-          disabled={!isRunning || activePlayer !== 'player1'}
+          onClick={() => switchPlayer('player2')}
+          disabled={!isRunning || activePlayer !== 'player2'}
           className={cn(
-            'flex flex-col items-center justify-center p-8 rounded-lg transition-all duration-300 w-full h-full',
-            activePlayer === 'player1' ? 'bg-white/40 dark:bg-white/20' : 'bg-card/50 backdrop-blur-sm',
-            'disabled:opacity-50 disabled:cursor-not-allowed border-2 shadow-md hover:scale-[1.02]'
+            'flex flex-col items-center justify-center p-8 rounded-lg transition-all duration-300 w-full h-full rotate-180 md:rotate-0',
+            activePlayer === 'player2' ? 'bg-card/80 scale-105 shadow-2xl' : 'bg-card/50 shadow-md',
+            'disabled:opacity-70 disabled:cursor-not-allowed border-2'
           )}
         >
           <div className={cn(
               "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
               isFullScreen ? "text-8xl md:text-[12rem]" : "text-5xl sm:text-7xl"
               )}>
-            {formatTime(player1Time)}
+            {formatTime(player2Time)}
           </div>
-          <div className="text-lg text-muted-foreground mt-2">Player 1</div>
+          <div className="text-lg text-muted-foreground mt-2">Player 2</div>
         </button>
 
         <button
-          onClick={() => switchPlayer('player2')}
-          disabled={!isRunning || activePlayer !== 'player2'}
+          onClick={() => switchPlayer('player1')}
+          disabled={!isRunning || activePlayer !== 'player1'}
           className={cn(
             'flex flex-col items-center justify-center p-8 rounded-lg transition-all duration-300 w-full h-full',
-            activePlayer === 'player2' ? 'bg-white/40 dark:bg-white/20' : 'bg-card/50 backdrop-blur-sm',
-            'disabled:opacity-50 disabled:cursor-not-allowed border-2 shadow-md hover:scale-[1.02]'
+             activePlayer === 'player1' ? 'bg-card/80 scale-105 shadow-2xl' : 'bg-card/50 shadow-md',
+            'disabled:opacity-70 disabled:cursor-not-allowed border-2'
           )}
         >
           <div className={cn(
               "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
               isFullScreen ? "text-8xl md:text-[12rem]" : "text-5xl sm:text-7xl"
             )}>
-            {formatTime(player2Time)}
+            {formatTime(player1Time)}
           </div>
-          <div className="text-lg text-muted-foreground mt-2">Player 2</div>
+          <div className="text-lg text-muted-foreground mt-2">Player 1</div>
         </button>
       </div>
 
