@@ -9,7 +9,6 @@ import {
   Clock,
   AlarmClock,
   Gauge,
-  Users,
   BrainCircuit,
   Expand,
   Minimize,
@@ -29,7 +28,6 @@ import SplitLapTimer from '@/components/chrono/split-lap-timer';
 import IntervalTimer from '@/components/chrono/interval-timer';
 import AlarmClockTool from '@/components/chrono/alarm-clock';
 import Metronome from '@/components/chrono/metronome';
-import ChessClock from '@/components/chrono/chess-clock';
 import { AIRecommender } from '@/components/chrono/ai-recommender';
 import Dashboard from '@/components/chrono/dashboard';
 import { useTheme } from 'next-themes';
@@ -44,8 +42,7 @@ export type ToolName =
   | 'Pomodoro'
   | 'Interval Timer'
   | 'Alarm Clock'
-  | 'Metronome'
-  | 'Chess Clock';
+  | 'Metronome';
 
 export const toolConfig = {
   'Dashboard': { name: 'Dashboard' as ToolName, icon: <HomeIcon />, gradient: 'bg-background' },
@@ -56,7 +53,6 @@ export const toolConfig = {
   'Interval Timer': { name: 'Interval Timer' as ToolName, icon: <Repeat />, gradient: 'tool-gradient-red' },
   'Alarm Clock': { name: 'Alarm Clock' as ToolName, icon: <AlarmClock />, gradient: 'tool-gradient-yellow' },
   'Metronome': { name: 'Metronome' as ToolName, icon: <Gauge />, gradient: 'tool-gradient-red' },
-  'Chess Clock': { name: 'Chess Clock' as ToolName, icon: <Users />, gradient: 'tool-gradient-gray' },
 };
 
 const tools = Object.values(toolConfig);
@@ -149,8 +145,6 @@ export default function Home() {
         return <AlarmClockTool isFullScreen={isFullScreen} />;
       case 'Metronome':
         return <Metronome isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
-      case 'Chess Clock':
-        return <ChessClock isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       default:
         return <Dashboard setActiveTool={setActiveTool} />;
     }

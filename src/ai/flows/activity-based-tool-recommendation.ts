@@ -21,7 +21,7 @@ const RecommendToolOutputSchema = z.object({
   recommendedTool: z
     .string()
     .describe(
-      'The most suitable timer/clock tool for the described activity (e.g., stopwatch, countdown timer, split/lap timer, interval timer, digital clock, alarm clock, metronome, chess clock).'
+      'The most suitable timer/clock tool for the described activity (e.g., stopwatch, countdown timer, split/lap timer, interval timer, digital clock, alarm clock, metronome).'
     ),
   reasoning: z
     .string()
@@ -41,7 +41,7 @@ const prompt = ai.definePrompt({
   output: {schema: RecommendToolOutputSchema},
   prompt: `You are an expert in recommending the most suitable timer or clock tool based on a user's activity description.
 
-  Given the following activity description, recommend the most appropriate tool from the following list: stopwatch, countdown timer, split/lap timer, interval timer, digital clock, alarm clock, metronome, chess clock.
+  Given the following activity description, recommend the most appropriate tool from the following list: stopwatch, countdown timer, split/lap timer, interval timer, digital clock, alarm clock, metronome.
 
   In your response, provide both the recommended tool and a brief explanation of why that tool is the best fit for the activity.
 

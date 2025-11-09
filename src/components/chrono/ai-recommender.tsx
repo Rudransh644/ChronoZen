@@ -36,7 +36,6 @@ function mapAiToolToAppTool(aiTool: string): ToolName | null {
         'digital clock': 'Digital Clock',
         'alarm clock': 'Alarm Clock',
         'metronome': 'Metronome',
-        'chess clock': 'Chess Clock'
     };
     return toolMap[aiTool.toLowerCase()] || null;
 }
