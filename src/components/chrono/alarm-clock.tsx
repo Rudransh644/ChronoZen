@@ -12,6 +12,15 @@ import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 type Day = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
@@ -61,11 +70,12 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const { toast } = useToast();
   
-  const [newAlarmHour, setNewAlarmHour] = useState('7');
+  const [newAlarmHour, setNewAlarmHour] = useState('07');
   const [newAlarmMinute, setNewAlarmMinute] = useState('00');
   const [newAlarmAmPm, setNewAlarmAmPm] = useState('AM');
   const [newAlarmLabel, setNewAlarmLabel] = useState('Wake up');
   const [newAlarmRepeat, setNewAlarmRepeat] = useState<Day[]>([]);
+  const [isAddAlarmOpen, setIsAddAlarmOpen] = useState(false);
 
   const synthRef = useRef<Tone.Synth | null>(null);
   const triggeredAlarmsRef = useRef<Set<number>>(new Set());
@@ -74,7 +84,6 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     try {
         const savedAlarms = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (savedAlarms) {
-            // Ensure repeatDays is always an array
             const parsedAlarms = JSON.parse(savedAlarms).map((alarm: Alarm) => ({
                 ...alarm,
                 repeatDays: alarm.repeatDays || []
@@ -133,7 +142,6 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
           });
           triggeredAlarmsRef.current.add(alarm.id);
           
-          // For one-time alarms, disable them after they trigger
           if (isOneTimeAlarm) {
             toggleAlarm(alarm.id, false);
           }
@@ -149,16 +157,18 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   
   const addAlarm = () => {
     if (newAlarmHour && newAlarmMinute && newAlarmAmPm && newAlarmLabel) {
-      const time12h = `${newAlarmHour}:${newAlarmMinute.padStart(2, '0')} ${newAlarmAmPm}`;
+      const time12h = `${newAlarmHour.padStart(2, '0')}:${newAlarmMinute.padStart(2, '0')} ${newAlarmAmPm}`;
       const time24h = format12to24(time12h);
 
       setAlarms([...alarms, { id: Date.now(), time: time24h, label: newAlarmLabel, enabled: true, repeatDays: newAlarmRepeat }]);
       
-      setNewAlarmHour('7');
+      // Reset form and close dialog
+      setNewAlarmHour('07');
       setNewAlarmMinute('00');
       setNewAlarmAmPm('AM');
       setNewAlarmLabel('Wake up');
       setNewAlarmRepeat([]);
+      setIsAddAlarmOpen(false);
     }
   };
   
@@ -183,13 +193,14 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const getRepeatText = (repeatDays: Day[]) => {
       if (repeatDays.length === 0) return 'One-time alarm';
       if (repeatDays.length === 7) return 'Every day';
-      if (repeatDays.length === 5 && repeatDays.includes('Mon') && repeatDays.includes('Tue') && repeatDays.includes('Wed') && repeatDays.includes('Thu') && repeatDays.includes('Fri')) return 'Weekdays';
       if (repeatDays.length === 2 && repeatDays.includes('Sat') && repeatDays.includes('Sun')) return 'Weekends';
-      return repeatDays.sort((a,b) => dayNames.indexOf(a) - dayNames.indexOf(b)).join(', ');
+      const sortedDays = dayNames.filter(day => repeatDays.includes(day as Day));
+      if (sortedDays.length === 5 && sortedDays.join(',') === 'Mon,Tue,Wed,Thu,Fri') return 'Weekdays';
+      return sortedDays.join(', ');
   }
 
   return (
-    <div className="flex flex-col h-full w-full max-w-2xl mx-auto p-4 gap-4">
+    <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-4 gap-4">
       <div className="text-center">
         <div className={cn(
             "font-mono font-bold tracking-tighter text-foreground/90 tabular-nums",
@@ -201,15 +212,44 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
           {currentTime ? currentTime.toDateString() : '...'}
         </div>
       </div>
-
-      <Card className={cn(isFullScreen ? "hidden" : "block", "bg-card/50 backdrop-blur-sm")}>
-          <CardContent className="p-4">
-              <div className="flex flex-col gap-4">
-                <div className="grid w-full gap-1.5">
-                    <Label htmlFor="alarm-label">Label</Label>
-                    <Input id="alarm-label" value={newAlarmLabel} onChange={e => setNewAlarmLabel(e.target.value)} />
-                </div>
-                <div className="grid w-full gap-1.5">
+      
+       <div className={cn("flex justify-end", isFullScreen ? "hidden" : "")}>
+        <Dialog open={isAddAlarmOpen} onOpenChange={setIsAddAlarmOpen}>
+          <DialogTrigger asChild>
+            <Button className="btn-press"><Plus className="mr-2 h-5 w-5" /> Add Alarm</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add a New Alarm</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-4">
+              <div className="grid w-full gap-1.5">
+                  <Label htmlFor="alarm-label">Label</Label>
+                  <Input id="alarm-label" value={newAlarmLabel} onChange={e => setNewAlarmLabel(e.target.value)} />
+              </div>
+              <div className="flex gap-2 items-end">
+                  <div className="grid w-full gap-1.5">
+                      <Label>Time</Label>
+                      <div className="flex gap-2">
+                           <Select value={newAlarmHour} onValueChange={setNewAlarmHour}>
+                              <SelectTrigger><SelectValue/></SelectTrigger>
+                              <SelectContent>{Array.from({length: 12}, (_, i) => <SelectItem key={i+1} value={String(i+1).padStart(2, '0')}>{String(i+1).padStart(2, '0')}</SelectItem>)}</SelectContent>
+                           </Select>
+                           <Select value={newAlarmMinute} onValueChange={setNewAlarmMinute}>
+                              <SelectTrigger><SelectValue/></SelectTrigger>
+                              <SelectContent>{Array.from({length: 60}, (_, i) => <SelectItem key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}</SelectItem>)}</SelectContent>
+                           </Select>
+                           <Select value={newAlarmAmPm} onValueChange={setNewAlarmAmPm}>
+                              <SelectTrigger><SelectValue/></SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="AM">AM</SelectItem>
+                                  <SelectItem value="PM">PM</SelectItem>
+                              </SelectContent>
+                           </Select>
+                      </div>
+                  </div>
+              </div>
+               <div className="grid w-full gap-1.5">
                     <Label>Repeat</Label>
                     <div className="flex justify-center gap-1">
                         {dayNames.map(day => (
@@ -217,40 +257,24 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
                                 key={day}
                                 variant={newAlarmRepeat.includes(day as Day) ? 'secondary' : 'ghost'}
                                 size="icon"
-                                className="h-8 w-8 rounded-full btn-press"
+                                className="h-8 w-8 rounded-full btn-press text-xs"
                                 onClick={() => toggleRepeatDay(day as Day)}
                             >
-                                {day.charAt(0)}
+                                {day}
                             </Button>
                         ))}
                     </div>
                 </div>
-                <div className="flex gap-2 items-end">
-                    <div className="grid w-full gap-1.5">
-                        <Label>Time</Label>
-                        <div className="flex gap-2">
-                             <Select value={newAlarmHour} onValueChange={setNewAlarmHour}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>{Array.from({length: 12}, (_, i) => <SelectItem key={i+1} value={String(i+1)}>{i+1}</SelectItem>)}</SelectContent>
-                             </Select>
-                             <Select value={newAlarmMinute} onValueChange={setNewAlarmMinute}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>{Array.from({length: 60}, (_, i) => <SelectItem key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}</SelectItem>)}</SelectContent>
-                             </Select>
-                             <Select value={newAlarmAmPm} onValueChange={setNewAlarmAmPm}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="AM">AM</SelectItem>
-                                    <SelectItem value="PM">PM</SelectItem>
-                                </SelectContent>
-                             </Select>
-                        </div>
-                    </div>
-                    <Button onClick={addAlarm} className="btn-press"><Plus className="h-5 w-5" /> Add</Button>
-                </div>
-              </div>
-          </CardContent>
-      </Card>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button onClick={addAlarm} className="btn-press">Add Alarm</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
       
       <ScrollArea className={cn(isFullScreen ? "hidden" : "flex-1")}>
         <div className="space-y-4 pr-4">
@@ -260,19 +284,19 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
           </div>
         ) : (
           alarms.sort((a,b) => a.time.localeCompare(b.time)).map(alarm => (
-            <div key={alarm.id} className={cn('flex items-center justify-between p-4 rounded-lg bg-card/50 backdrop-blur-sm border', alarm.enabled ? '' : 'opacity-50')}>
+            <div key={alarm.id} className={cn('flex items-center justify-between p-4 rounded-lg bg-card/50 backdrop-blur-sm border transition-opacity', alarm.enabled ? '' : 'opacity-50')}>
               <div>
                 <p className={cn('text-3xl font-mono', alarm.enabled ? 'text-foreground' : 'text-muted-foreground')}>{format24to12(alarm.time)}</p>
                 <div className="text-sm text-muted-foreground">
                   <span>{alarm.label}</span>
                   <span className="mx-2">·</span>
-                  <span>{getRepeatText(alarm.repeatDays)}</span>
+                  <span className='capitalize'>{getRepeatText(alarm.repeatDays)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                   <Switch checked={alarm.enabled} onCheckedChange={() => toggleAlarm(alarm.id)} />
-                  <Button variant="ghost" size="icon" onClick={() => removeAlarm(alarm.id)} className="btn-press">
-                      <Trash2 className="h-5 w-5 text-destructive" />
+                  <Button variant="ghost" size="icon" onClick={() => removeAlarm(alarm.id)} className="btn-press text-destructive/70 hover:text-destructive">
+                      <Trash2 className="h-5 w-5" />
                   </Button>
               </div>
             </div>
@@ -283,4 +307,6 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     </div>
   );
 }
+    
+
     
