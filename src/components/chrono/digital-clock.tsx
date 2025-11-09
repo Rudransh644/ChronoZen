@@ -11,8 +11,9 @@ export default function DigitalClock({ isFullScreen }: DigitalClockProps) {
   const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    setTime(new Date());
-    const timerId = setInterval(() => setTime(new Date()), 1000);
+    const update = () => setTime(new Date());
+    update();
+    const timerId = setInterval(update, 1000);
     return () => clearInterval(timerId);
   }, []);
 
@@ -27,8 +28,8 @@ export default function DigitalClock({ isFullScreen }: DigitalClockProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-center">
       <div className={cn(
-          "font-mono font-bold tracking-tight text-foreground tabular-nums",
-           isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-6xl sm:text-8xl md:text-9xl"
+          "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+           isFullScreen ? "text-8xl sm:text-9xl md:text-[15rem]" : "text-6xl sm:text-8xl md:text-9xl"
         )}>
         {time ? formatTime(time) : '00:00:00'}
       </div>

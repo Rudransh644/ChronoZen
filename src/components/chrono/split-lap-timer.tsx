@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 const formatTime = (time: number, withMs = true) => {
   const milliseconds = withMs ? `.${`00${time % 1000}`.slice(-3, -1)}` : '';
@@ -88,30 +89,30 @@ export default function SplitLapTimer({ isFullScreen, setControls }: SplitLapTim
     <div className="flex flex-col items-center justify-between h-full w-full max-w-md mx-auto p-4 gap-6">
       <div className="w-full text-center">
         <div className={cn(
-            "font-mono font-bold tracking-tight text-foreground tabular-nums",
-            isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-5xl sm:text-7xl"
+            "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+            isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem] leading-none" : "text-5xl sm:text-7xl"
         )}>
           {formatTime(time)}
         </div>
         <div className={cn(
             "font-mono text-muted-foreground tabular-nums",
-            isFullScreen ? "text-4xl" : "text-2xl"
+            isFullScreen ? "text-4xl mt-4" : "text-2xl"
             )}>
           {laps.length > 0 ? formatTime(time - lastLapTimeRef.current) : formatTime(0)}
         </div>
       </div>
       
       <div className={cn("flex items-center justify-center gap-4 w-full", isFullScreen ? "hidden" : "flex")}>
-        <Button size="lg" onClick={handleStartStop} className={cn("w-32", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600", "text-white")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32 btn-press text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")}>
           {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
         </Button>
-        <Button size="lg" variant="outline" onClick={isRunning ? lap : reset} className="w-32">
+        <Button size="lg" variant="outline" onClick={isRunning ? lap : reset} className="w-32 btn-press">
           {isRunning ? <><Flag className="mr-2 h-5 w-5" /> Lap</> : <><RotateCcw className="mr-2 h-5 w-5" /> Reset</>}
         </Button>
       </div>
 
       <div className={cn("w-full flex-1", isFullScreen ? 'hidden' : 'block')}>
-        <Separator />
+        <Separator className="my-4" />
         <ScrollArea className="h-48 w-full mt-4">
           <Table>
             <TableHeader>
@@ -125,14 +126,19 @@ export default function SplitLapTimer({ isFullScreen, setControls }: SplitLapTim
               {laps.length > 0 ? laps.map((lapTime, index) => {
                 const totalTime = laps.slice(index).reduce((acc, curr) => acc + curr, 0);
                 return (
-                <TableRow key={index}>
+                <motion.tr 
+                    key={laps.length - index}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                >
                   <TableCell className="font-medium">{laps.length - index}</TableCell>
                   <TableCell>{formatTime(lapTime, false)}</TableCell>
                   <TableCell className="text-right">{formatTime(lastLapTimeRef.current - totalTime + lapTime, false)}</TableCell>
-                </TableRow>
+                </motion.tr>
               )}) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">No laps recorded.</TableCell>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground h-24">No laps recorded.</TableCell>
                 </TableRow>
               )}
             </TableBody>

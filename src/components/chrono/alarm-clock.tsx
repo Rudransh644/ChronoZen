@@ -32,8 +32,9 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const triggeredAlarmsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    setCurrentTime(new Date());
-    const timerId = setInterval(() => setCurrentTime(new Date()), 1000);
+    const update = () => setCurrentTime(new Date());
+    update();
+    const timerId = setInterval(update, 1000);
     return () => clearInterval(timerId);
   }, []);
 
@@ -58,7 +59,6 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
           playSound();
           alert(`Alarm: ${alarm.label}`);
           triggeredAlarmsRef.current.add(alarm.id);
-          // Auto-disable alarm after it rings
           toggleAlarm(alarm.id);
         }
       } else {
@@ -85,11 +85,11 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   };
   
   return (
-    <div className="flex flex-col h-full w-full max-w-lg mx-auto p-4 gap-4">
+    <div className="flex flex-col h-full w-full max-w-2xl mx-auto p-4 gap-4">
       <div className="text-center">
         <div className={cn(
-            "font-mono font-bold tracking-tight text-foreground tabular-nums",
-            isFullScreen ? "text-8xl" : "text-6xl"
+            "font-mono font-bold tracking-tighter text-foreground/90 tabular-nums",
+            isFullScreen ? "text-8xl md:text-9xl" : "text-6xl"
         )}>
           {currentTime ? currentTime.toLocaleTimeString() : '...'}
         </div>
@@ -98,7 +98,7 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
         </div>
       </div>
 
-      <Card>
+      <Card className={cn(isFullScreen ? "hidden" : "block", "bg-card/50 backdrop-blur-sm")}>
           <CardContent className="p-4">
               <div className="flex gap-2 items-end">
                 <div className="grid w-full gap-1.5">
@@ -109,25 +109,27 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
                     <Label htmlFor="alarm-time">Time</Label>
                     <Input id="alarm-time" type="time" value={newAlarmTime} onChange={e => setNewAlarmTime(e.target.value)} />
                 </div>
-                <Button onClick={addAlarm}><Plus className="h-5 w-5" /> Add</Button>
+                <Button onClick={addAlarm} className="btn-press"><Plus className="h-5 w-5" /> Add</Button>
               </div>
           </CardContent>
       </Card>
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className={cn(isFullScreen ? "hidden" : "flex-1")}>
         <div className="space-y-4 pr-4">
         {alarms.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">No alarms set.</p>
+          <div className="text-center text-muted-foreground py-8 h-40 flex items-center justify-center rounded-lg border-2 border-dashed">
+            No alarms set.
+          </div>
         ) : (
           alarms.sort((a,b) => a.time.localeCompare(b.time)).map(alarm => (
-            <div key={alarm.id} className={`flex items-center justify-between p-4 rounded-lg bg-card border ${alarm.enabled ? '' : 'opacity-50'}`}>
+            <div key={alarm.id} className={cn('flex items-center justify-between p-4 rounded-lg bg-card/50 backdrop-blur-sm border', alarm.enabled ? '' : 'opacity-50')}>
               <div>
-                <p className={`text-3xl font-mono ${alarm.enabled ? 'text-foreground' : 'text-muted-foreground'}`}>{alarm.time}</p>
+                <p className={cn('text-3xl font-mono', alarm.enabled ? 'text-foreground' : 'text-muted-foreground')}>{alarm.time}</p>
                 <p className="text-sm text-muted-foreground">{alarm.label}</p>
               </div>
               <div className="flex items-center gap-4">
                   <Switch checked={alarm.enabled} onCheckedChange={() => toggleAlarm(alarm.id)} />
-                  <Button variant="ghost" size="icon" onClick={() => removeAlarm(alarm.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => removeAlarm(alarm.id)} className="btn-press">
                       <Trash2 className="h-5 w-5 text-destructive" />
                   </Button>
               </div>

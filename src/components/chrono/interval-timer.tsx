@@ -9,6 +9,7 @@ import { Play, Pause, RotateCcw, Settings, Forward } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 type Phase = 'work' | 'rest';
 
@@ -59,34 +60,36 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
   const start = useCallback(() => {
     setIsRunning(true);
     endTimeRef.current = Date.now() + time;
-    intervalRef.current = setInterval(() => {
-      const newTime = endTimeRef.current - Date.now();
-      if (newTime <= 0) {
-        nextPhase();
-      } else {
-        setTime(newTime);
-      }
-    }, 50);
+    // The interval logic is now handled in the main useEffect
   }, [time]);
   
   const nextPhase = useCallback(() => {
     stop();
+    let wasRunning = isRunning;
+
     if (currentPhase === 'work' && currentInterval <= totalIntervals) {
       setCurrentPhase('rest');
       setTime(restDuration);
-      if (isRunning) start();
       playSound("E5");
+      if (wasRunning) {
+        setIsRunning(true);
+        endTimeRef.current = Date.now() + restDuration;
+      }
     } else if (currentPhase === 'rest' && currentInterval < totalIntervals) {
       setCurrentPhase('work');
       setTime(workDuration);
       setCurrentInterval(prev => prev + 1);
-       if (isRunning) start();
       playSound("C5");
+      if (wasRunning) {
+        setIsRunning(true);
+        endTimeRef.current = Date.now() + workDuration;
+      }
     } else {
       reset();
       playSound("G5");
     }
-  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, start, stop]);
+  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, stop]);
+
 
   const handleStartStop = useCallback(() => {
     if (isRunning) {
@@ -128,7 +131,6 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
     }
   }, [setControls, handleStartStop, reset]);
 
-  // Add nextPhase to start's dependency array
   useEffect(() => {
     if (isRunning) {
       const id = setInterval(() => {
@@ -157,23 +159,28 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
   
   return (
     <div className="flex flex-col items-center justify-center gap-6 w-full text-center">
-      <div className={cn(
-          'font-semibold uppercase tracking-widest rounded-full px-4 py-1', 
-          currentPhase === 'work' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800',
+      <motion.div 
+        key={currentPhase}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(
+          'font-semibold uppercase tracking-widest rounded-full px-4 py-1 shadow-md', 
+          currentPhase === 'work' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
           isFullScreen ? 'text-4xl px-6 py-2' : 'text-2xl'
         )}>
         {currentPhase}
-      </div>
+      </motion.div>
 
       <div className={cn(
-          "font-mono font-bold tracking-tight text-foreground tabular-nums",
-          isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-6xl sm:text-8xl"
+          "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+          isFullScreen ? "text-8xl sm:text-9xl md:text-[15rem]" : "text-6xl sm:text-8xl"
         )}>
         {formatTime(time)}
       </div>
 
       <div className={cn("w-full max-w-sm", isFullScreen ? "hidden" : "block")}>
-        <Progress value={progress} className={`h-3 ${currentPhase === 'work' ? '[&>div]:bg-green-500' : '[&>div]:bg-blue-500'}`} />
+        <Progress value={progress} className={`h-3 transition-all duration-300 ${currentPhase === 'work' ? '[&>div]:bg-green-500' : '[&>div]:bg-blue-500'}`} />
         <div className="flex justify-between text-sm text-muted-foreground mt-2">
             <span>Interval</span>
             <span>{currentInterval} / {totalIntervals}</span>
@@ -181,15 +188,15 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
       </div>
       
       <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>
-        <Button size="lg" onClick={handleStartStop} className={cn("w-28 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-28 text-white btn-press", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")}>
           {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
         </Button>
-        <Button size="lg" variant="outline" onClick={reset}><RotateCcw className="h-5 w-5" /></Button>
-        <Button size="lg" variant="outline" onClick={skip}><Forward className="h-5 w-5" /></Button>
+        <Button size="lg" variant="outline" onClick={reset} className="btn-press"><RotateCcw className="h-5 w-5" /></Button>
+        <Button size="lg" variant="outline" onClick={skip} className="btn-press"><Forward className="h-5 w-5" /></Button>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="lg" variant="ghost"><Settings className="h-6 w-6" /></Button>
+            <Button size="lg" variant="ghost" className="btn-press"><Settings className="h-6 w-6" /></Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -218,7 +225,7 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">Save</Button>
+                <Button type="submit" className="btn-press">Save</Button>
               </DialogFooter>
             </form>
           </DialogContent>

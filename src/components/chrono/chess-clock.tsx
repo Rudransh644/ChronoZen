@@ -82,7 +82,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
       setIsRunning(true);
       if (!activePlayer) {
           setActivePlayer('player1');
-        }
+      }
     lastTickRef.current = Date.now();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(tick, 100);
@@ -128,21 +128,21 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   }, []);
 
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-4 w-full", isFullScreen ? "h-full" : "")}>
-        {winner && <div className="text-2xl font-bold text-green-600 mb-4">{winner} wins!</div>}
+    <div className={cn("flex flex-col items-center justify-center gap-4 w-full h-full")}>
+        {winner && <div className="text-2xl font-bold text-green-500 mb-4 absolute top-1/4">{winner} wins!</div>}
       <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4 w-full flex-1", isFullScreen ? "h-full" : "")}>
         <button
           onClick={() => switchPlayer('player1')}
           disabled={!isRunning || activePlayer !== 'player1'}
           className={cn(
-            'flex flex-col items-center justify-center p-8 rounded-lg transition-colors duration-300 w-full h-full',
-            activePlayer === 'player1' ? 'bg-green-200 dark:bg-green-800/50' : 'bg-card',
-            'disabled:opacity-50 disabled:cursor-not-allowed border-2'
+            'flex flex-col items-center justify-center p-8 rounded-lg transition-all duration-300 w-full h-full',
+            activePlayer === 'player1' ? 'bg-white/40 dark:bg-white/20' : 'bg-card/50 backdrop-blur-sm',
+            'disabled:opacity-50 disabled:cursor-not-allowed border-2 shadow-md hover:scale-[1.02]'
           )}
         >
           <div className={cn(
-              "font-mono font-bold tracking-tight text-foreground tabular-nums",
-              isFullScreen ? "text-8xl" : "text-5xl sm:text-7xl"
+              "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+              isFullScreen ? "text-8xl md:text-[12rem]" : "text-5xl sm:text-7xl"
               )}>
             {formatTime(player1Time)}
           </div>
@@ -153,14 +153,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
           onClick={() => switchPlayer('player2')}
           disabled={!isRunning || activePlayer !== 'player2'}
           className={cn(
-            'flex flex-col items-center justify-center p-8 rounded-lg transition-colors duration-300 w-full h-full',
-            activePlayer === 'player2' ? 'bg-green-200 dark:bg-green-800/50' : 'bg-card',
-            'disabled:opacity-50 disabled:cursor-not-allowed border-2'
+            'flex flex-col items-center justify-center p-8 rounded-lg transition-all duration-300 w-full h-full',
+            activePlayer === 'player2' ? 'bg-white/40 dark:bg-white/20' : 'bg-card/50 backdrop-blur-sm',
+            'disabled:opacity-50 disabled:cursor-not-allowed border-2 shadow-md hover:scale-[1.02]'
           )}
         >
           <div className={cn(
-              "font-mono font-bold tracking-tight text-foreground tabular-nums",
-              isFullScreen ? "text-8xl" : "text-5xl sm:text-7xl"
+              "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+              isFullScreen ? "text-8xl md:text-[12rem]" : "text-5xl sm:text-7xl"
             )}>
             {formatTime(player2Time)}
           </div>
@@ -169,10 +169,10 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
       </div>
 
       <div className={cn("flex items-center gap-4 mt-4", isFullScreen ? "hidden" : "flex")}>
-        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={!!winner}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white btn-press", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={!!winner}>
             {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Pause</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
         </Button>
-        <Button size="lg" variant="outline" onClick={resetClock} className="w-32">
+        <Button size="lg" variant="outline" onClick={resetClock} className="w-32 btn-press">
           <RotateCcw className="mr-2 h-5 w-5" /> Reset
         </Button>
       </div>

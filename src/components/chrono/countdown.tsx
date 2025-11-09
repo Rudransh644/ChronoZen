@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+
 
 const formatTime = (time: number) => {
   const seconds = `0${Math.floor((time / 1000) % 60)}`.slice(-2);
@@ -117,27 +119,29 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
 
   return (
     <div className="flex flex-col items-center justify-center gap-8 w-full">
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-lg text-center">
         <div className={cn(
-            "font-mono font-bold tracking-tight text-foreground tabular-nums text-center",
-            isFullScreen ? "text-7xl sm:text-9xl md:text-[10rem]" : "text-5xl sm:text-7xl md:text-8xl"
+            "font-mono font-bold tracking-tight text-foreground/90 tabular-nums",
+            isFullScreen ? "text-7xl sm:text-9xl md:text-[12rem]" : "text-5xl sm:text-7xl md:text-8xl"
         )}>
             {formatTime(time)}
         </div>
-        <Progress value={progress} className="mt-4 h-2" />
+        <div className={cn("absolute -bottom-4 w-full", isFullScreen ? "px-8" : "px-0")}>
+            <Progress value={progress} className="h-2 [&>div]:bg-violet-500" />
+        </div>
       </div>
 
-      <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>
-        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={time === 0}>
+      <div className={cn("flex items-center gap-4 pt-4", isFullScreen ? "hidden" : "flex")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white btn-press", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={time === 0}>
           {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
         </Button>
-        <Button size="lg" variant="outline" onClick={reset} className="w-32">
+        <Button size="lg" variant="outline" onClick={reset} className="w-32 btn-press">
           <RotateCcw className="mr-2 h-5 w-5" /> Reset
         </Button>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="lg" variant="ghost" className="w-12 h-12 p-0">
+            <Button size="lg" variant="ghost" className="w-12 h-12 p-0 btn-press">
               <Settings className="h-6 w-6" />
             </Button>
           </DialogTrigger>
@@ -161,7 +165,7 @@ export default function Countdown({ isFullScreen, setControls }: CountdownProps)
               </div>
             </div>
             <DialogFooter>
-                <Button onClick={handleSetTime}>Set Time</Button>
+                <Button onClick={handleSetTime} className="btn-press">Set Time</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
