@@ -20,7 +20,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -196,7 +196,6 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
       };
       
       if (user && alarmsCollectionRef) {
-        // Non-blocking Firestore update
         addDocumentNonBlocking(alarmsCollectionRef, newAlarmData);
       } else {
         const newAlarm = { ...newAlarmData, id: Date.now().toString() };
