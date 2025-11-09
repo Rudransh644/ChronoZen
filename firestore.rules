@@ -1,0 +1,96 @@
+/**
+ * @fileoverview Firestore Security Rules for ChronoZen application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model. Each user can only access their own profile data and timer usage statistics.
+ *
+ * Data Structure:
+ * - All data is nested under /users/{userId}.
+ * - User profiles are stored in /users/{userId}/profile.
+ * - Timer usage statistics are stored in /users/{userId}/timerUsages/{timerUsageId}.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed.
+ * - All writes require a verified user identity.
+ * - Rules are designed for Authorization Independence, avoiding costly get() calls.
+ * - Data consistency between the path and document's internal fields is enforced on create and update.
+ *
+ * Denormalization for Authorization:
+ * The `userId` is included in both `/users/{userId}/profile` and `/users/{userId}/timerUsages/{timerUsageId}` documents to ensure proper ownership.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the resource
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if the user is the existing owner of the resource
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Enforces access control for user profiles. Only the authenticated user can read and write their own profile.
+     * @path /users/{userId}/profile
+     * @allow (create) User 'user123' can create their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @allow (get) User 'user123' can get their profile if request.auth.uid == 'user123'.
+     * @allow (update) User 'user123' can update their profile if request.auth.uid == 'user123'.
+     * @allow (delete) User 'user123' can delete their profile if request.auth.uid == 'user123' and the profile exists.
+     * @deny (create) User 'user456' cannot create a profile under /users/user123/profile.
+     * @deny (get) User 'user456' cannot get the profile under /users/user123/profile.
+     * @deny (update) User 'user456' cannot update the profile under /users/user123/profile.
+     * @deny (delete) User 'user456' cannot delete the profile under /users/user123/profile.
+     * @principle Enforces document ownership for all operations on user profiles.
+     */
+    match /users/{userId}/profile {
+      // Only allow authenticated users to read their own profile
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing user profiles is not allowed
+
+      // Only allow authenticated users to create their own profile, and validate the userId.
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+
+      // Only allow authenticated users to update their own profile, and ensure userId is immutable
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+
+      // Only allow authenticated users to delete their own profile
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Enforces access control for timer usage statistics. Only the authenticated user can read and write their own timer usage data.
+     * @path /users/{userId}/timerUsages/{timerUsageId}
+     * @allow (create) User 'user123' can create timer usage data under their profile if request.auth.uid == 'user123' and request.resource.data.userId == 'user123'.
+     * @allow (get) User 'user123' can get timer usage data under their profile if request.auth.uid == 'user123'.
+     * @allow (update) User 'user123' can update timer usage data under their profile if request.auth.uid == 'user123'.
+     * @allow (delete) User 'user123' can delete timer usage data under their profile if request.auth.uid == 'user123' and the data exists.
+     * @deny (create) User 'user456' cannot create timer usage data under /users/user123/timerUsages/{timerUsageId}.
+     * @deny (get) User 'user456' cannot get timer usage data under /users/user123/timerUsages/{timerUsageId}.
+     * @deny (update) User 'user456' cannot update timer usage data under /users/user123/timerUsages/{timerUsageId}.
+     * @deny (delete) User 'user456' cannot delete timer usage data under /users/user123/timerUsages/{timerUsageId}.
+     * @principle Enforces document ownership for all operations on timer usage statistics.
+     */
+    match /users/{userId}/timerUsages/{timerUsageId} {
+      // Only allow authenticated users to read their own timer usages
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      // Only allow authenticated users to create their own timer usages, and validate the userId.
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+
+      // Only allow authenticated users to update their own timer usages, and ensure userId is immutable
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+
+      // Only allow authenticated users to delete their own timer usages
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

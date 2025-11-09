@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile and preferences within the ChronoZen application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Unique identifier for the user from the authentication system (e.g., Firebase). (Relationship: UserProfile 1:1 AuthUser)"
+        },
+        "pomodoroModeSettings": {
+          "type": "string",
+          "description": "Settings for the Pomodoro mode, such as work and break intervals. Stored as a serialized string (e.g., JSON)."
+        },
+        "backgroundMusicPreference": {
+          "type": "string",
+          "description": "The user's preferred background music option (e.g., 'rain', 'lo-fi', 'none')."
+        },
+        "preferredTimerColor": {
+          "type": "string",
+          "description": "The user's preferred color for the timer display (e.g., '#E6E6FA')."
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    },
+    "TimerUsage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TimerUsage",
+      "type": "object",
+      "description": "Tracks the usage statistics for each timer tool by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the TimerUsage entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N TimerUsage)"
+        },
+        "timerType": {
+          "type": "string",
+          "description": "The type of timer used (e.g., 'stopwatch', 'countdown', 'interval')."
+        },
+        "totalTimeUsed": {
+          "type": "number",
+          "description": "The total time, in seconds, the timer has been used."
+        },
+        "lastUsed": {
+          "type": "string",
+          "description": "The date and time the timer was last used.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "timerType",
+        "totalTimeUsed",
+        "lastUsed"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/profile",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information. This path ensures that only the authenticated user can access their profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, obtained from Firebase Authentication."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/timerUsages/{timerUsageId}",
+        "definition": {
+          "entityName": "TimerUsage",
+          "schema": {
+            "$ref": "#/backend/entities/TimerUsage"
+          },
+          "description": "Stores timer usage statistics for each user. This is a subcollection of the user's profile, allowing users to access only their timer usage data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, obtained from Firebase Authentication."
+            },
+            {
+              "name": "timerUsageId",
+              "description": "The unique ID of the timer usage record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support the required Queryability, Atomicity, and Predictability (QAPs), and maintain data clarity for the ChronoZen application. User data is segregated by path-based ownership under `/users/{userId}` to enforce privacy and simplify security rules. This design avoids the need for complex `get()` calls in security rules, allowing for atomic operations (transactions/batches). Timer usage data is stored as subcollections under user profiles for easy aggregation and reporting. This approach aligns with Structural Segregation and Access Modeling strategies, leading to a more maintainable and secure application.\n\n*   **Authorization Independence:** Achieved by storing user-specific data (UserProfile, TimerUsage) under the `/users/{userId}` path. This allows security rules to be based solely on `request.auth.uid` and the path, eliminating the need for `get()` calls to parent documents.\n*   **QAPs:**\n    *   The path-based ownership ensures that `list` operations are secure because a user can only access data under their own `userId`.\n    *   Atomic operations are supported because there are no hierarchical dependencies that break transactions.\n*   **Data Clarity and Predictability:** Consistent naming conventions (e.g., `userId`, `timerType`) are used throughout the structure. Explicit state modeling is enforced through the `UserProfile` and `TimerUsage` entities' properties."
+  }
+}
