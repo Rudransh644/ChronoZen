@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as Tone from 'tone';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, Settings, Timer } from 'lucide-react';
+import { RotateCcw, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,11 +100,10 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const handlePlayerTap = useCallback((player: Player) => {
     if (winner) return;
     
-    // If the game hasn't started, the first tap starts it for the opponent.
+    // If the game hasn't started, the first tap on either clock starts Player 1's timer.
     if (!isRunning && activePlayer === null) {
         setIsRunning(true);
-        const opponent = player === 1 ? 2 : 1;
-        setActivePlayer(opponent);
+        setActivePlayer(1);
         playClickSound();
         return;
     }
@@ -158,14 +157,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const handleStartPause = () => {
     if (winner) return;
-    // This function is now only for explicit pausing/resuming if needed,
-    // but the main logic is in handlePlayerTap.
     if (isRunning) {
       stopTimer();
     } else {
-      // Can only resume if a player is active (game has started)
       if (player1Time > 0 && player2Time > 0 && activePlayer) {
         setIsRunning(true);
+      } else if (activePlayer === null) { // Game hasn't started
+        setIsRunning(true);
+        setActivePlayer(1); // Start with player 1
       }
     }
   }
