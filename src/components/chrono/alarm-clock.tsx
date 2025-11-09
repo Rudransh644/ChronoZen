@@ -11,6 +11,7 @@ import { Card, CardContent } from '../ui/card';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface Alarm {
   id: number;
@@ -43,6 +44,7 @@ const format12to24 = (time12h: string) => {
 
 // Helper to convert 24-hour HH:mm string to 12-hour format string
 const format24to12 = (time24h: string) => {
+    if (!time24h) return '';
     const [hours24, minutes] = time24h.split(':');
     const hours = parseInt(hours24, 10) % 12 || 12;
     const modifier = parseInt(hours24, 10) >= 12 ? 'PM' : 'AM';
@@ -53,6 +55,7 @@ const format24to12 = (time24h: string) => {
 export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const { toast } = useToast();
   
   const [newAlarmHour, setNewAlarmHour] = useState('7');
   const [newAlarmMinute, setNewAlarmMinute] = useState('00');
@@ -89,28 +92,31 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const playSound = async () => {
     await Tone.start();
     if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
+        navigator.vibrate([200, 100, 200, 100, 200, 100, 200]);
     }
     if (!synthRef.current) {
       synthRef.current = new Tone.Synth().toDestination();
     }
     const now = Tone.now();
-    synthRef.current.triggerAttackRelease("C5", "8n", now);
-    synthRef.current.triggerAttackRelease("G5", "8n", now + 0.2);
-    synthRef.current.triggerAttackRelease("C5", "8n", now + 0.4);
-    synthRef.current.triggerAttackRelease("G5", "8n", now + 0.6);
-    synthRef.current.triggerAttackRelease("C5", "8n", now + 0.8);
+    const notes = ["C5", "E5", "G5", "C6"];
+    notes.forEach((note, i) => {
+        synthRef.current?.triggerAttackRelease(note, "8n", now + i * 0.2);
+    })
   };
 
   useEffect(() => {
     if (!currentTime) return;
-    const currentHHMM = `${`0${currentTime.getHours()}`.slice(-2)}:${`0${currentTime.getMinutes()}`.slice(-2)}`;
+    const currentHHMM = `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
     
     alarms.forEach(alarm => {
       if (alarm.enabled && alarm.time === currentHHMM) {
         if (!triggeredAlarmsRef.current.has(alarm.id)) {
           playSound();
-          alert(`Alarm: ${alarm.label}`);
+          toast({
+              title: "⏰ Alarm!",
+              description: alarm.label,
+              duration: 10000
+          })
           triggeredAlarmsRef.current.add(alarm.id);
         }
       } else {
