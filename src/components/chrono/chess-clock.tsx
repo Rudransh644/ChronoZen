@@ -34,7 +34,6 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [winner, setWinner] = useState<Player | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inputMinutes, setInputMinutes] = useState('5');
@@ -57,17 +56,20 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
     } catch (e) { console.error(e) }
   }, []);
 
+  const stopTimer = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, []);
+
   const reset = useCallback(() => {
+    stopTimer();
     setIsRunning(false);
-    setIsPaused(false);
     setActivePlayer(null);
     setWinner(null);
     setPlayer1Time(initialTime);
     setPlayer2Time(initialTime);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  }, [initialTime]);
+  }, [initialTime, stopTimer]);
   
-  const playClickSound = async () => {
+  const playClickSound = useCallback(async () => {
     await Tone.start();
     if (!clickSoundRef.current) {
         clickSoundRef.current = new Tone.Player({
@@ -81,7 +83,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
         clickSoundRef.current.start();
     }
     if(navigator.vibrate) navigator.vibrate(50);
-  }
+  }, []);
 
   const playEndSound = async () => {
     await Tone.start();
@@ -92,29 +94,21 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
     if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
   }
 
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    setIsRunning(false);
-  }, []);
-
   const handlePlayerTap = useCallback((player: Player) => {
-    if (winner || isPaused) return;
+    if (winner || !isRunning) return;
     
-    // If the game hasn't started, the first tap on either clock starts Player 1's timer.
-    if (!isRunning && activePlayer === null) {
-        setIsRunning(true);
+    if (activePlayer === null) {
         setActivePlayer(1);
         playClickSound();
         return;
     }
     
-    // If it's the active player's turn, switch to the opponent.
-    if (isRunning && player === activePlayer) {
+    if (player === activePlayer) {
       const opponent = player === 1 ? 2 : 1;
       setActivePlayer(opponent);
       playClickSound();
     }
-  }, [isRunning, activePlayer, winner, isPaused]);
+  }, [isRunning, activePlayer, winner, playClickSound]);
 
   useEffect(() => {
       if (isRunning && activePlayer && !winner) {
@@ -130,6 +124,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
                       if (newTime <= 0) {
                           setWinner(2);
                           playEndSound();
+                          setIsRunning(false);
                           stopTimer();
                           return 0;
                       }
@@ -141,6 +136,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
                       if (newTime <= 0) {
                           setWinner(1);
                           playEndSound();
+                          setIsRunning(false);
                           stopTimer();
                           return 0;
                       }
@@ -149,17 +145,15 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
               }
           }, 50);
       } else {
-          if (intervalRef.current) clearInterval(intervalRef.current);
+          stopTimer();
       }
-      return () => { if (intervalRef.current) clearInterval(intervalRef.current) };
+      return () => stopTimer();
   }, [isRunning, activePlayer, winner, stopTimer]);
 
 
   const handlePauseResume = () => {
     if (winner || activePlayer === null) return;
-    const nowPaused = !isPaused;
-    setIsPaused(nowPaused);
-    setIsRunning(!nowPaused);
+    setIsRunning(prev => !prev);
   }
 
   useEffect(() => {
@@ -171,8 +165,6 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const handleSetTime = () => {
     const newTime = (parseInt(inputMinutes) || 5) * 60 * 1000;
     setInitialTime(newTime);
-    setPlayer1Time(newTime);
-    setPlayer2Time(newTime);
     setIsSettingsOpen(false);
     reset();
     try {
@@ -183,14 +175,14 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
   const PlayerClock = ({ player, time }: { player: Player, time: number }) => (
     <motion.button
       onClick={() => handlePlayerTap(player)}
-      disabled={!!winner || (isRunning && activePlayer !== player) || isPaused}
+      disabled={!!winner || !isRunning || activePlayer !== player}
       className={cn(
         "w-full h-full flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-4",
         activePlayer === player && isRunning ? 'bg-primary/20 scale-105 shadow-2xl' : 'bg-card',
         winner && winner !== player ? 'opacity-30' : '',
         player === 1 ? "sm:rounded-r-none" : "sm:rounded-l-none",
         isFullScreen ? '' : 'border',
-        (isRunning && activePlayer !== player) || isPaused ? 'cursor-not-allowed' : 'cursor-pointer'
+        (!isRunning || activePlayer !== player) ? 'cursor-not-allowed' : 'cursor-pointer'
       )}
     >
       <div className={cn("absolute font-semibold text-muted-foreground", isFullScreen ? "top-4 text-xl" : "top-2 text-md")}>
@@ -241,7 +233,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
             <Button variant="outline" onClick={reset} className="w-28 btn-press"><RotateCcw className="mr-2"/> Reset</Button>
             
             <Button size="icon" onClick={handlePauseResume} className="w-14 h-14 btn-press" disabled={!activePlayer || !!winner}>
-                {isPaused ? <Play /> : <Pause />}
+                {isRunning ? <Pause /> : <Play />}
             </Button>
             
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
