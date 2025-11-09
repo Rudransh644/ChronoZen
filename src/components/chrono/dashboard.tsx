@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, CloudSun, Moon, Sun, Wind } from 'lucide-react';
+import { ArrowRight, CloudSun, Moon, Sun, Wind, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ToolName, toolConfig } from '@/app/page';
+import { useUser } from '@/firebase';
 
 interface DashboardProps {
   setActiveTool: (tool: ToolName) => void;
@@ -24,9 +25,12 @@ interface WeatherData {
 }
 
 const Greeting = () => {
+  const { user } = useUser();
   const [greeting, setGreeting] = useState('');
   const [emoji, setEmoji] = useState('');
   const [isClient, setIsClient] = useState(false);
+  
+  const displayName = user && !user.isAnonymous ? user.email?.split('@')[0] : 'User';
 
   useEffect(() => {
     setIsClient(true);
@@ -48,8 +52,8 @@ const Greeting = () => {
   }
 
   return (
-    <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-      {greeting}, User {emoji}
+    <h1 className="text-3xl md:text-4xl font-bold text-foreground capitalize">
+      {greeting}, {displayName} {emoji}
     </h1>
   );
 };
@@ -95,12 +99,12 @@ const WeatherWidget = () => {
     const lon = -0.1276; 
     const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
 
-    if (!apiKey) {
-      setError("Weather API key not configured.");
-      return;
-    }
-
     const fetchWeather = async () => {
+      // Don't fetch if key is missing and show a message instead.
+      if (!apiKey) {
+        setError("Weather API key not configured.");
+        return;
+      }
       try {
         const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`);
         if (!res.ok) {
@@ -196,7 +200,7 @@ export default function Dashboard({ setActiveTool }: DashboardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {dashboardTools.map((tool) => (
           <ToolLink key={tool.name} tool={tool} onClick={() => setActiveTool(tool.name)} />
         ))}

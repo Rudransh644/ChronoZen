@@ -15,10 +15,13 @@ import {
   Minimize,
   Home as HomeIcon,
   Sun,
-  Moon
+  Moon,
+  User,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
 
 import DigitalClock from '@/components/chrono/digital-clock';
 import Countdown from '@/components/chrono/countdown';
@@ -30,12 +33,15 @@ import ChessClock from '@/components/chrono/chess-clock';
 import { AIRecommender } from '@/components/chrono/ai-recommender';
 import Dashboard from '@/components/chrono/dashboard';
 import { useTheme } from 'next-themes';
+import PomodoroTimer from '@/components/chrono/pomodoro-timer';
+import { AuthModal } from '@/components/chrono/auth-modal';
 
 export type ToolName =
   | 'Dashboard'
   | 'Digital Clock'
   | 'Stopwatch'
   | 'Countdown'
+  | 'Pomodoro'
   | 'Interval Timer'
   | 'Alarm Clock'
   | 'Metronome'
@@ -46,6 +52,7 @@ export const toolConfig = {
   'Digital Clock': { name: 'Digital Clock' as ToolName, icon: <Clock />, gradient: 'tool-gradient-blue' },
   'Stopwatch': { name: 'Stopwatch' as ToolName, icon: <Timer />, gradient: 'tool-gradient-green' },
   'Countdown': { name: 'Countdown' as ToolName, icon: <Hourglass />, gradient: 'tool-gradient-purple' },
+  'Pomodoro': { name: 'Pomodoro' as ToolName, icon: <Brain />, gradient: 'tool-gradient-red' },
   'Interval Timer': { name: 'Interval Timer' as ToolName, icon: <Repeat />, gradient: 'tool-gradient-red' },
   'Alarm Clock': { name: 'Alarm Clock' as ToolName, icon: <AlarmClock />, gradient: 'tool-gradient-yellow' },
   'Metronome': { name: 'Metronome' as ToolName, icon: <Gauge />, gradient: 'tool-gradient-red' },
@@ -64,8 +71,10 @@ const toolControlsRef = {
 export default function Home() {
   const [activeTool, setActiveTool] = useState<ToolName>('Dashboard');
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const fullScreenRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
+  const { user } = useUser();
 
   const handleSetToolControls = useCallback((controls: Partial<typeof toolControlsRef>) => {
     toolControlsRef.startStop = controls.startStop || (() => {});
@@ -132,6 +141,8 @@ export default function Home() {
         return <SplitLapTimer isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Countdown':
         return <Countdown isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
+      case 'Pomodoro':
+        return <PomodoroTimer isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Interval Timer':
         return <IntervalTimer isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Alarm Clock':
@@ -175,6 +186,15 @@ export default function Home() {
             <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAuthModalOpen(true)}
+            className={cn("btn-press", user ? "text-green-500" : "")}
+            title={user ? `Logged in as ${user.email || 'Anonymous'}`: 'Login / Sign up'}
+          >
+            <User />
           </Button>
         </div>
       </nav>
@@ -225,6 +245,7 @@ export default function Home() {
             />
         </aside>
        )}
+       <AuthModal isOpen={isAuthModalOpen} setIsOpen={setIsAuthModalOpen} />
     </div>
   );
 }
