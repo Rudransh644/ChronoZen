@@ -1,5 +1,42 @@
 {
   "entities": {
+    "Alarm": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Alarm",
+      "description": "Represents a single alarm set by a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Alarm entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this alarm."
+        },
+        "time": {
+          "type": "string",
+          "description": "The time of the alarm in 24-hour HH:mm format."
+        },
+        "label": {
+          "type": "string",
+          "description": "A descriptive label for the alarm."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the alarm is currently active."
+        },
+        "repeatDays": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+          },
+          "description": "An array of days on which the alarm should repeat."
+        }
+      },
+      "required": ["id", "userId", "time", "label", "enabled"]
+    },
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
@@ -112,8 +149,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/alarms/{alarmId}",
+        "definition": {
+          "entityName": "Alarm",
+          "schema": {
+            "$ref": "#/backend/entities/Alarm"
+          },
+          "description": "Stores individual alarms for a user. This is a subcollection under the user's main document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, obtained from Firebase Authentication."
+            },
+            {
+              "name": "alarmId",
+              "description": "The unique ID for the alarm record."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support the required Queryability, Atomicity, and Predictability (QAPs), and maintain data clarity for the ChronoZen application. User data is segregated by path-based ownership under `/users/{userId}` to enforce privacy and simplify security rules. This design avoids the need for complex `get()` calls in security rules, allowing for atomic operations (transactions/batches). Timer usage data is stored as subcollections under user profiles for easy aggregation and reporting. This approach aligns with Structural Segregation and Access Modeling strategies, leading to a more maintainable and secure application.\n\n*   **Authorization Independence:** Achieved by storing user-specific data (UserProfile, TimerUsage) under the `/users/{userId}` path. This allows security rules to be based solely on `request.auth.uid` and the path, eliminating the need for `get()` calls to parent documents.\n*   **QAPs:**\n    *   The path-based ownership ensures that `list` operations are secure because a user can only access data under their own `userId`.\n    *   Atomic operations are supported because there are no hierarchical dependencies that break transactions.\n*   **Data Clarity and Predictability:** Consistent naming conventions (e.g., `userId`, `timerType`) are used throughout the structure. Explicit state modeling is enforced through the `UserProfile` and `TimerUsage` entities' properties."
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, support the required Queryability, Atomicity, and Predictability (QAPs), and maintain data clarity for the ChronoZen application. User data is segregated by path-based ownership under `/users/{userId}` to enforce privacy and simplify security rules. This design avoids the need for complex `get()` calls in security rules, allowing for atomic operations (transactions/batches). Timer usage data and alarms are stored as subcollections under user profiles for easy aggregation and reporting. This approach aligns with Structural Segregation and Access Modeling strategies, leading to a more maintainable and secure application.\n\n*   **Authorization Independence:** Achieved by storing user-specific data (UserProfile, TimerUsage, Alarm) under the `/users/{userId}` path. This allows security rules to be based solely on `request.auth.uid` and the path, eliminating the need for `get()` calls to parent documents.\n*   **QAPs:**\n    *   The path-based ownership ensures that `list` operations are secure because a user can only access data under their own `userId`.\n    *   Atomic operations are supported because there are no hierarchical dependencies that break transactions.\n*   **Data Clarity and Predictability:** Consistent naming conventions (e.g., `userId`, `timerType`) are used throughout the structure. Explicit state modeling is enforced through the entity properties."
   }
 }

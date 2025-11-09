@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '../ui/card';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -21,16 +20,19 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 type Day = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
 
 interface Alarm {
-  id: number;
+  id: string;
   time: string; // Stored in 24-hour HH:mm format
   label: string;
   enabled: boolean;
   repeatDays: Day[];
+  userId?: string;
 }
 
 interface AlarmClockProps {
@@ -70,6 +72,15 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const { toast } = useToast();
   
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const alarmsCollectionRef = useMemoFirebase(() => 
+    user ? collection(firestore, 'users', user.uid, 'alarms') : null
+  , [firestore, user]);
+
+  const { data: firestoreAlarms, isLoading } = useCollection<Alarm>(alarmsCollectionRef);
+  
   const [newAlarmHour, setNewAlarmHour] = useState('07');
   const [newAlarmMinute, setNewAlarmMinute] = useState('00');
   const [newAlarmAmPm, setNewAlarmAmPm] = useState('AM');
@@ -78,36 +89,52 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
   const [isAddAlarmOpen, setIsAddAlarmOpen] = useState(false);
 
   const synthRef = useRef<Tone.Synth | null>(null);
-  const triggeredAlarmsRef = useRef<Set<number>>(new Set());
+  const triggeredAlarmsRef = useRef<Set<string>>(new Set());
   
+  // Effect for loading alarms from localStorage for anonymous users
   useEffect(() => {
-    try {
-        const savedAlarms = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedAlarms) {
-            const parsedAlarms = JSON.parse(savedAlarms).map((alarm: Alarm) => ({
-                ...alarm,
-                repeatDays: alarm.repeatDays || []
-            }));
-            setAlarms(parsedAlarms);
+    if (!user && !isLoading) {
+        try {
+            const savedAlarms = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedAlarms) {
+                const parsedAlarms = JSON.parse(savedAlarms).map((alarm: Alarm) => ({
+                    ...alarm,
+                    repeatDays: alarm.repeatDays || []
+                }));
+                setAlarms(parsedAlarms);
+            }
+        } catch (error) {
+            console.error("Failed to load alarms from localStorage", error);
         }
-    } catch (error) {
-        console.error("Failed to load alarms from localStorage", error);
     }
+  }, [user, isLoading]);
 
+  // Effect for updating local state with firestore data for logged-in users
+  useEffect(() => {
+      if (user && firestoreAlarms) {
+          setAlarms(firestoreAlarms);
+      }
+  }, [user, firestoreAlarms]);
+
+  // Effect for saving alarms to localStorage for anonymous users
+  useEffect(() => {
+      if (!user) {
+          try {
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(alarms));
+          } catch (error) {
+              console.error("Failed to save alarms to localStorage", error);
+          }
+      }
+  }, [alarms, user]);
+
+
+  useEffect(() => {
     const update = () => setCurrentTime(new Date());
     update();
     const timerId = setInterval(update, 1000);
     return () => clearInterval(timerId);
   }, []);
   
-  useEffect(() => {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(alarms));
-      } catch (error) {
-        console.error("Failed to save alarms to localStorage", error);
-      }
-  }, [alarms])
-
   const playSound = async () => {
     await Tone.start();
     if (navigator.vibrate) {
@@ -159,8 +186,22 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     if (newAlarmHour && newAlarmMinute && newAlarmAmPm && newAlarmLabel) {
       const time12h = `${newAlarmHour.padStart(2, '0')}:${newAlarmMinute.padStart(2, '0')} ${newAlarmAmPm}`;
       const time24h = format12to24(time12h);
-
-      setAlarms([...alarms, { id: Date.now(), time: time24h, label: newAlarmLabel, enabled: true, repeatDays: newAlarmRepeat }]);
+      
+      const newAlarmData = {
+        time: time24h,
+        label: newAlarmLabel,
+        enabled: true,
+        repeatDays: newAlarmRepeat,
+        userId: user?.uid,
+      };
+      
+      if (user && alarmsCollectionRef) {
+        // Non-blocking Firestore update
+        addDocumentNonBlocking(alarmsCollectionRef, newAlarmData);
+      } else {
+        const newAlarm = { ...newAlarmData, id: Date.now().toString() };
+        setAlarms(prevAlarms => [...prevAlarms, newAlarm]);
+      }
       
       // Reset form and close dialog
       setNewAlarmHour('07');
@@ -172,16 +213,31 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     }
   };
   
-  const removeAlarm = (id: number) => {
-    setAlarms(alarms.filter(alarm => alarm.id !== id));
+  const removeAlarm = (id: string) => {
+    if (user && firestore) {
+      const docRef = doc(firestore, 'users', user.uid, 'alarms', id);
+      deleteDocumentNonBlocking(docRef);
+    } else {
+      setAlarms(alarms.filter(alarm => alarm.id !== id));
+    }
   };
 
-  const toggleAlarm = (id: number, forceState?: boolean) => {
-    setAlarms(alarms.map(alarm => 
-      alarm.id === id 
-        ? { ...alarm, enabled: forceState !== undefined ? forceState : !alarm.enabled } 
-        : alarm
-    ));
+  const toggleAlarm = (id: string, forceState?: boolean) => {
+    const alarmToUpdate = alarms.find(alarm => alarm.id === id);
+    if (!alarmToUpdate) return;
+    
+    const newState = forceState !== undefined ? forceState : !alarmToUpdate.enabled;
+
+    if (user && firestore) {
+      const docRef = doc(firestore, 'users', user.uid, 'alarms', id);
+      updateDocumentNonBlocking(docRef, { enabled: newState });
+    } else {
+       setAlarms(alarms.map(alarm => 
+         alarm.id === id 
+           ? { ...alarm, enabled: newState } 
+           : alarm
+       ));
+    }
   };
   
   const toggleRepeatDay = (day: Day) => {
@@ -278,7 +334,11 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
       
       <ScrollArea className={cn(isFullScreen ? "hidden" : "flex-1")}>
         <div className="space-y-4 pr-4">
-        {alarms.length === 0 ? (
+        {(isLoading && user) ? (
+          <div className="text-center text-muted-foreground py-8 h-40 flex items-center justify-center">
+            Loading alarms...
+          </div>
+        ) : alarms.length === 0 ? (
           <div className="text-center text-muted-foreground py-8 h-40 flex items-center justify-center rounded-lg border-2 border-dashed">
             No alarms set.
           </div>
@@ -307,6 +367,3 @@ export default function AlarmClockTool({ isFullScreen }: AlarmClockProps) {
     </div>
   );
 }
-    
-
-    
