@@ -5,23 +5,18 @@ import { ArrowRight, CloudSun, Moon, Sun, Wind, User as UserIcon } from 'lucide-
 import { cn } from '@/lib/utils';
 import { type ToolName, toolConfig } from '@/app/page';
 import { useUser } from '@/firebase';
+import { getWeatherAction } from '@/app/actions';
 
 interface DashboardProps {
   setActiveTool: (tool: ToolName) => void;
 }
 
 interface WeatherData {
-  main: {
-    temp: number;
-  };
-  weather: {
-    main: string;
-    description: string;
-  }[];
-  wind: {
-    speed: number;
-  };
-  name: string;
+  temperature: number;
+  main: string;
+  description: string;
+  windSpeed: number;
+  locationName: string;
 }
 
 const Greeting = () => {
@@ -94,36 +89,28 @@ const WeatherWidget = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This is a placeholder. For a real app, you would get the user's location.
-    const lat = 51.5072;
-    const lon = -0.1276; 
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
-
-    const fetchWeather = async () => {
-      // Don't fetch if key is missing and show a message instead.
-      if (!apiKey) {
-        setError("Weather API key not configured.");
-        return;
-      }
+    const fetchWeather = async (lat: number, lon: number) => {
       try {
-        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`);
-        if (!res.ok) {
-          throw new Error('Failed to fetch weather data');
+        const data = await getWeatherAction({ latitude: lat, longitude: lon });
+        if ('error' in data) {
+          throw new Error(data.error);
         }
-        const data = await res.json();
-        setWeather(data);
+        setWeather(data as WeatherData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred");
       }
     };
 
-    navigator.geolocation.getCurrentPosition((position) => {
-        fetchWeather();
-    }, (err) => {
-        // fallback to London if permission denied
-        fetchWeather();
-    });
-
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        fetchWeather(position.coords.latitude, position.coords.longitude);
+      },
+      (err) => {
+        // Fallback to a default location if permission denied
+        console.warn("Geolocation permission denied, falling back to default location.");
+        fetchWeather(51.5072, -0.1276); // London
+      }
+    );
   }, []);
 
   const getWeatherIcon = (main: string) => {
@@ -148,15 +135,15 @@ const WeatherWidget = () => {
   return (
     <div className="flex items-center gap-4 p-4 rounded-lg bg-card/50 backdrop-blur-sm border shadow-sm">
       <div className="text-blue-400">
-        {getWeatherIcon(weather.weather[0].main)}
+        {getWeatherIcon(weather.main)}
       </div>
       <div className="flex-1">
-        <p className="font-bold text-lg">{Math.round(weather.main.temp)}°C in {weather.name}</p>
-        <p className="text-sm text-muted-foreground capitalize">{weather.weather[0].description}</p>
+        <p className="font-bold text-lg">{Math.round(weather.temperature)}°C in {weather.locationName}</p>
+        <p className="text-sm text-muted-foreground capitalize">{weather.description}</p>
       </div>
       <div className="flex items-center gap-2 text-muted-foreground">
         <Wind size={20} />
-        <span className="text-sm">{weather.wind.speed.toFixed(1)} km/h</span>
+        <span className="text-sm">{weather.windSpeed.toFixed(1)} km/h</span>
       </div>
     </div>
   );

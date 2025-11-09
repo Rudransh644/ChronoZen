@@ -2,6 +2,7 @@
 'use server';
 
 import { recommendTool as recommendToolFlow } from '@/ai/flows/activity-based-tool-recommendation';
+import { getWeather as getWeatherFlow } from '@/ai/flows/get-weather-flow';
 import { z } from 'zod';
 
 const recommendToolSchema = z.object({
@@ -42,5 +43,26 @@ export async function recommendToolAction(prevState: FormState, formData: FormDa
         return {
             message: "An error occurred while getting recommendations. Please try again."
         };
+    }
+}
+
+const getWeatherSchema = z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+});
+
+export async function getWeatherAction(coords: { latitude: number, longitude: number }) {
+    const validatedFields = getWeatherSchema.safeParse(coords);
+
+    if (!validatedFields.success) {
+        return { error: "Invalid coordinates provided." };
+    }
+    
+    try {
+        const result = await getWeatherFlow(validatedFields.data);
+        return result.weather;
+    } catch (error) {
+        console.error("getWeatherAction error:", error);
+        return { error: "Failed to fetch weather data." };
     }
 }
