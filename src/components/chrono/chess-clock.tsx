@@ -186,6 +186,7 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
             )}>
             {formatTime(player1Time)}
           </div>
+
           <div className="text-lg text-muted-foreground mt-2">Player 1</div>
         </button>
       </div>
