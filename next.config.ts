@@ -30,11 +30,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    // The 'allowedDevOrigins' option is causing an error in this environment.
-    // This may be due to the Next.js version or a temporary configuration issue.
-    // Removing it will allow the server to start.
-  }
 };
 
 export default nextConfig;
