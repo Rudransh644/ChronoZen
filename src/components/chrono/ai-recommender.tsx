@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { BrainCircuit, Wand2 } from 'lucide-react';
 import type { ToolName } from '@/app/page';
 import type { FormState } from '@/app/actions';
@@ -31,7 +31,7 @@ function mapAiToolToAppTool(aiTool: string): ToolName | null {
     const toolMap: { [key: string]: ToolName } = {
         'stopwatch': 'Stopwatch',
         'countdown timer': 'Countdown',
-        'split/lap timer': 'Split/Lap Timer',
+        'split/lap timer': 'Stopwatch',
         'interval timer': 'Interval Timer',
         'digital clock': 'Digital Clock',
         'alarm clock': 'Alarm Clock',
@@ -48,7 +48,7 @@ interface AIRecommenderProps {
 }
 
 export function AIRecommender({ setActiveTool, setRecommendedTool }: AIRecommenderProps) {
-  const [state, formAction] = useFormState(recommendToolAction, initialState);
+  const [state, formAction] = useActionState(recommendToolAction, initialState);
 
   useEffect(() => {
     if (state.data?.recommendedTool) {
