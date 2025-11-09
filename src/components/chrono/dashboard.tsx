@@ -26,8 +26,10 @@ interface WeatherData {
 const Greeting = () => {
   const [greeting, setGreeting] = useState('');
   const [emoji, setEmoji] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     const hour = new Date().getHours();
     if (hour < 12) {
       setGreeting('Good Morning');
@@ -41,6 +43,10 @@ const Greeting = () => {
     }
   }, []);
 
+  if (!isClient) {
+    return <h1 className="text-3xl md:text-4xl font-bold text-foreground h-11"></h1>;
+  }
+
   return (
     <h1 className="text-3xl md:text-4xl font-bold text-foreground">
       {greeting}, User {emoji}
@@ -49,12 +55,23 @@ const Greeting = () => {
 };
 
 const CurrentTime = () => {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    const timerId = setInterval(() => setTime(new Date()), 1000);
+    const update = () => setTime(new Date());
+    update(); // Set initial time on client
+    const timerId = setInterval(update, 1000);
     return () => clearInterval(timerId);
   }, []);
+
+  if (!time) {
+    return (
+        <div className="flex flex-col items-center">
+            <div className="font-mono text-4xl md:text-6xl font-bold tracking-tight text-foreground/90 h-16 w-48 bg-muted/50 animate-pulse rounded-md"></div>
+            <div className="text-muted-foreground h-6 w-64 bg-muted/50 animate-pulse rounded-md mt-2"></div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center">
@@ -96,7 +113,13 @@ const WeatherWidget = () => {
       }
     };
 
-    fetchWeather();
+    navigator.geolocation.getCurrentPosition((position) => {
+        fetchWeather();
+    }, (err) => {
+        // fallback to London if permission denied
+        fetchWeather();
+    });
+
   }, []);
 
   const getWeatherIcon = (main: string) => {
