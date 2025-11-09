@@ -26,10 +26,11 @@ const formatTime = (time: number) => {
 };
 
 interface CountdownProps {
-    isFullScreen: boolean;
+  isFullScreen: boolean;
+  setControls?: (controls: { startStop: () => void; reset: () => void; }) => void;
 }
 
-export default function Countdown({ isFullScreen }: CountdownProps) {
+export default function Countdown({ isFullScreen, setControls }: CountdownProps) {
   const [duration, setDuration] = useState(10 * 60 * 1000); // 10 minutes
   const [time, setTime] = useState(duration);
   const [isRunning, setIsRunning] = useState(false);
@@ -73,6 +74,14 @@ export default function Countdown({ isFullScreen }: CountdownProps) {
       }
     }, 50);
   }, [time, stop]);
+  
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+      stop();
+    } else {
+      start();
+    }
+  }, [isRunning, start, stop]);
 
   const reset = useCallback(() => {
     stop();
@@ -91,6 +100,12 @@ export default function Countdown({ isFullScreen }: CountdownProps) {
     }
     setIsDialogOpen(false);
   };
+  
+  useEffect(() => {
+    if (setControls) {
+      setControls({ startStop: handleStartStop, reset });
+    }
+  }, [setControls, handleStartStop, reset]);
 
   useEffect(() => {
     return () => {
@@ -112,16 +127,10 @@ export default function Countdown({ isFullScreen }: CountdownProps) {
         <Progress value={progress} className="mt-4 h-2" />
       </div>
 
-      <div className="flex items-center gap-4">
-        {!isRunning ? (
-          <Button size="lg" onClick={start} className="w-32 bg-green-500 hover:bg-green-600 text-white" disabled={time === 0}>
-            <Play className="mr-2 h-5 w-5" /> Start
-          </Button>
-        ) : (
-          <Button size="lg" onClick={stop} className="w-32 bg-red-500 hover:bg-red-600 text-white">
-            <Pause className="mr-2 h-5 w-5" /> Pause
-          </Button>
-        )}
+      <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={time === 0}>
+          {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
+        </Button>
         <Button size="lg" variant="outline" onClick={reset} className="w-32">
           <RotateCcw className="mr-2 h-5 w-5" /> Reset
         </Button>

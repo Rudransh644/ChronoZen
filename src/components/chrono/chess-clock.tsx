@@ -20,9 +20,10 @@ const DURATION = 5 * 60 * 1000; // 5 minutes
 
 interface ChessClockProps {
     isFullScreen: boolean;
+    setControls?: (controls: { startStop: () => void; reset: () => void; }) => void;
 }
 
-export default function ChessClock({ isFullScreen }: ChessClockProps) {
+export default function ChessClock({ isFullScreen, setControls }: ChessClockProps) {
   const [player1Time, setPlayer1Time] = useState(DURATION);
   const [player2Time, setPlayer2Time] = useState(DURATION);
   const [activePlayer, setActivePlayer] = useState<'player1' | 'player2' | null>(null);
@@ -87,6 +88,18 @@ export default function ChessClock({ isFullScreen }: ChessClockProps) {
     intervalRef.current = setInterval(tick, 100);
   }, [winner, isRunning, activePlayer, tick]);
   
+  const pauseClock = () => {
+      stopClock();
+  }
+
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+        pauseClock();
+    } else {
+        startClock();
+    }
+  }, [isRunning, startClock]);
+
   const switchPlayer = (player: 'player1' | 'player2') => {
     if (!isRunning || winner || activePlayer !== player) return;
     playSound();
@@ -101,16 +114,18 @@ export default function ChessClock({ isFullScreen }: ChessClockProps) {
     setPlayer2Time(DURATION);
     setWinner(null);
   };
+  
+  useEffect(() => {
+    if (setControls) {
+      setControls({ startStop: handleStartStop, reset: resetClock });
+    }
+  }, [setControls, handleStartStop, resetClock]);
 
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
-  
-  const pauseClock = () => {
-      stopClock();
-  }
 
   return (
     <div className={cn("flex flex-col items-center justify-center gap-4 w-full", isFullScreen ? "h-full" : "")}>
@@ -153,16 +168,10 @@ export default function ChessClock({ isFullScreen }: ChessClockProps) {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 mt-4">
-        {!isRunning ? (
-          <Button size="lg" onClick={startClock} className="w-32 bg-green-500 hover:bg-green-600 text-white" disabled={!!winner}>
-            <Play className="mr-2 h-5 w-5" /> Start
-          </Button>
-        ) : (
-          <Button size="lg" onClick={pauseClock} className="w-32 bg-red-500 hover:bg-red-600 text-white">
-            <Pause className="mr-2 h-5 w-5" /> Pause
-          </Button>
-        )}
+      <div className={cn("flex items-center gap-4 mt-4", isFullScreen ? "hidden" : "flex")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")} disabled={!!winner}>
+            {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Pause</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
+        </Button>
         <Button size="lg" variant="outline" onClick={resetClock} className="w-32">
           <RotateCcw className="mr-2 h-5 w-5" /> Reset
         </Button>

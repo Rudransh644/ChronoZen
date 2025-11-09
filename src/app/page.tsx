@@ -30,7 +30,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import DigitalClock from '@/components/chrono/digital-clock';
-import Stopwatch from '@/components/chrono/stopwatch';
 import Countdown from '@/components/chrono/countdown';
 import SplitLapTimer from '@/components/chrono/split-lap-timer';
 import IntervalTimer from '@/components/chrono/interval-timer';
@@ -43,7 +42,6 @@ export type ToolName =
   | 'Digital Clock'
   | 'Stopwatch'
   | 'Countdown'
-  | 'Split/Lap Timer'
   | 'Interval Timer'
   | 'Alarm Clock'
   | 'Metronome'
@@ -53,18 +51,30 @@ const tools: { name: ToolName; icon: React.ReactNode; color: string }[] = [
     { name: 'Digital Clock', icon: <Clock />, color: 'bg-sky-100 dark:bg-sky-900/20' },
     { name: 'Stopwatch', icon: <Timer />, color: 'bg-green-100 dark:bg-green-900/20' },
     { name: 'Countdown', icon: <Hourglass />, color: 'bg-orange-100 dark:bg-orange-900/20' },
-    { name: 'Split/Lap Timer', icon: <Spline />, color: 'bg-indigo-100 dark:bg-indigo-900/20' },
     { name: 'Interval Timer', icon: <Repeat />, color: 'bg-red-100 dark:bg-red-900/20' },
     { name: 'Alarm Clock', icon: <AlarmClock />, color: 'bg-yellow-100 dark:bg-yellow-900/20' },
     { name: 'Metronome', icon: <Gauge />, color: 'bg-purple-100 dark:bg-purple-900/20' },
     { name: 'Chess Clock', icon: <Users />, color: 'bg-stone-200 dark:bg-stone-800/20' },
 ];
 
+// Ref for tool controls to be called from keyboard shortcuts
+const toolControlsRef = {
+  startStop: () => {},
+  reset: () => {},
+  lap: () => {},
+};
+
 export default function Home() {
   const [activeTool, setActiveTool] = useState<ToolName>('Digital Clock');
   const [recommendedTool, setRecommendedTool] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const fullScreenRef = useRef<HTMLDivElement>(null);
+  
+  const handleSetToolControls = useCallback((controls: Partial<typeof toolControlsRef>) => {
+    toolControlsRef.startStop = controls.startStop || (() => {});
+    toolControlsRef.reset = controls.reset || (() => {});
+    toolControlsRef.lap = controls.lap || (() => {});
+  }, []);
 
   const toggleFullScreen = useCallback(() => {
     if (!isFullScreen) {
@@ -79,8 +89,38 @@ export default function Home() {
       setIsFullScreen(!!document.fullscreenElement);
     };
     document.addEventListener('fullscreenchange', handleFullScreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
-  }, []);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            return;
+        }
+
+        switch(e.key.toLowerCase()){
+            case 's':
+                toolControlsRef.startStop();
+                break;
+            case 'r':
+                toolControlsRef.reset();
+                break;
+            case 'l':
+            case ' ': // spacebar for lap
+                if(activeTool === 'Stopwatch') {
+                    e.preventDefault();
+                    toolControlsRef.lap();
+                }
+                break;
+            case 'f':
+                toggleFullScreen();
+                break;
+        }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+        document.removeEventListener('fullscreenchange', handleFullScreenChange);
+        window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [toggleFullScreen, activeTool]);
 
   const activeToolConfig = tools.find(t => t.name === activeTool) || tools[0];
 
@@ -89,25 +129,23 @@ export default function Home() {
       case 'Digital Clock':
         return <DigitalClock isFullScreen={isFullScreen} />;
       case 'Stopwatch':
-        return <Stopwatch isFullScreen={isFullScreen} />;
+        return <SplitLapTimer isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Countdown':
-        return <Countdown isFullScreen={isFullScreen} />;
-      case 'Split/Lap Timer':
-        return <SplitLapTimer isFullScreen={isFullScreen} />;
+        return <Countdown isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Interval Timer':
-        return <IntervalTimer isFullScreen={isFullScreen} />;
+        return <IntervalTimer isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Alarm Clock':
         return <AlarmClockTool isFullScreen={isFullScreen} />;
       case 'Metronome':
-        return <Metronome isFullScreen={isFullScreen} />;
+        return <Metronome isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       case 'Chess Clock':
-        return <ChessClock isFullScreen={isFullScreen} />;
+        return <ChessClock isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       default:
         return <DigitalClock isFullScreen={isFullScreen} />;
     }
   };
 
-  const memoizedTool = useMemo(() => renderTool(), [activeTool, isFullScreen]);
+  const memoizedTool = useMemo(() => renderTool(), [activeTool, isFullScreen, handleSetToolControls]);
 
   return (
     <SidebarProvider>

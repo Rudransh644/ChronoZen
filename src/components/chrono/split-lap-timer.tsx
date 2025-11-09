@@ -17,10 +17,11 @@ const formatTime = (time: number, withMs = true) => {
 };
 
 interface SplitLapTimerProps {
-    isFullScreen: boolean;
+  isFullScreen: boolean;
+  setControls?: (controls: { startStop: () => void; reset: () => void; lap: () => void }) => void;
 }
 
-export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
+export default function SplitLapTimer({ isFullScreen, setControls }: SplitLapTimerProps) {
   const [time, setTime] = useState(0);
   const [laps, setLaps] = useState<number[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -43,6 +44,14 @@ export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
     setIsRunning(false);
   }, []);
 
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+      stop();
+    } else {
+      start();
+    }
+  }, [isRunning, start, stop]);
+
   const reset = useCallback(() => {
     stop();
     setTime(0);
@@ -58,6 +67,16 @@ export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
   }, [time, isRunning]);
 
   useEffect(() => {
+    if (setControls) {
+      setControls({
+        startStop: handleStartStop,
+        reset: reset,
+        lap: lap,
+      });
+    }
+  }, [setControls, handleStartStop, reset, lap]);
+
+  useEffect(() => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -70,7 +89,7 @@ export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
       <div className="w-full text-center">
         <div className={cn(
             "font-mono font-bold tracking-tight text-foreground tabular-nums",
-            isFullScreen ? "text-7xl sm:text-8xl" : "text-5xl sm:text-7xl"
+            isFullScreen ? "text-8xl sm:text-9xl md:text-[12rem]" : "text-5xl sm:text-7xl"
         )}>
           {formatTime(time)}
         </div>
@@ -82,49 +101,44 @@ export default function SplitLapTimer({ isFullScreen }: SplitLapTimerProps) {
         </div>
       </div>
       
-      <div className="flex items-center justify-center gap-4 w-full">
-        {!isRunning ? (
-          <Button size="lg" onClick={start} className="w-32 bg-green-500 hover:bg-green-600 text-white">
-            <Play className="mr-2 h-5 w-5" /> Start
-          </Button>
-        ) : (
-          <Button size="lg" onClick={stop} className="w-32 bg-red-500 hover:bg-red-600 text-white">
-            <Pause className="mr-2 h-5 w-5" /> Stop
-          </Button>
-        )}
+      <div className={cn("flex items-center justify-center gap-4 w-full", isFullScreen ? "hidden" : "flex")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-32", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600", "text-white")}>
+          {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
+        </Button>
         <Button size="lg" variant="outline" onClick={isRunning ? lap : reset} className="w-32">
           {isRunning ? <><Flag className="mr-2 h-5 w-5" /> Lap</> : <><RotateCcw className="mr-2 h-5 w-5" /> Reset</>}
         </Button>
       </div>
 
-      <Separator />
-
-      <ScrollArea className="h-48 w-full">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Lap</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {laps.length > 0 ? laps.map((lapTime, index) => {
-              const totalTime = laps.slice(index).reduce((acc, curr) => acc + curr, 0);
-              return (
-              <TableRow key={index}>
-                <TableCell className="font-medium">{laps.length - index}</TableCell>
-                <TableCell>{formatTime(lapTime, false)}</TableCell>
-                <TableCell className="text-right">{formatTime(lastLapTimeRef.current - totalTime + lapTime, false)}</TableCell>
-              </TableRow>
-            )}) : (
+      <div className={cn("w-full flex-1", isFullScreen ? 'hidden' : 'block')}>
+        <Separator />
+        <ScrollArea className="h-48 w-full mt-4">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">No laps recorded.</TableCell>
+                <TableHead className="w-[100px]">Lap</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead className="text-right">Total</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+            </TableHeader>
+            <TableBody>
+              {laps.length > 0 ? laps.map((lapTime, index) => {
+                const totalTime = laps.slice(index).reduce((acc, curr) => acc + curr, 0);
+                return (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">{laps.length - index}</TableCell>
+                  <TableCell>{formatTime(lapTime, false)}</TableCell>
+                  <TableCell className="text-right">{formatTime(lastLapTimeRef.current - totalTime + lapTime, false)}</TableCell>
+                </TableRow>
+              )}) : (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">No laps recorded.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      </div>
     </div>
   );
 }

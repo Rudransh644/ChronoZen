@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils';
 
 interface MetronomeProps {
     isFullScreen: boolean;
+    setControls?: (controls: { startStop: () => void; reset: () => void; }) => void;
 }
 
-export default function Metronome({ isFullScreen }: MetronomeProps) {
+export default function Metronome({ isFullScreen, setControls }: MetronomeProps) {
   const [bpm, setBpm] = useState(120);
   const [isRunning, setIsRunning] = useState(false);
   
@@ -35,6 +36,25 @@ export default function Metronome({ isFullScreen }: MetronomeProps) {
     setIsRunning(false);
   }, []);
 
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+        stop();
+    } else {
+        start();
+    }
+  }, [isRunning, start, stop]);
+  
+  const reset = useCallback(() => {
+      stop();
+      setBpm(120);
+  }, [stop]);
+
+  useEffect(() => {
+    if (setControls) {
+        setControls({ startStop: handleStartStop, reset });
+    }
+  }, [setControls, handleStartStop, reset]);
+
   useEffect(() => {
     Tone.Transport.bpm.value = bpm;
     
@@ -45,12 +65,18 @@ export default function Metronome({ isFullScreen }: MetronomeProps) {
     }
     
     return () => {
-      Tone.Transport.stop();
-      Tone.Transport.cancel();
-      loopRef.current?.dispose();
-      synthRef.current?.dispose();
-      loopRef.current = null;
-      synthRef.current = null;
+      if (loopRef.current) {
+        loopRef.current.dispose();
+        loopRef.current = null;
+      }
+      if (synthRef.current) {
+        synthRef.current.dispose();
+        synthRef.current = null;
+      }
+      if (Tone.Transport.state === 'started') {
+        Tone.Transport.stop();
+        Tone.Transport.cancel();
+      }
     };
   }, []);
   
@@ -74,7 +100,7 @@ export default function Metronome({ isFullScreen }: MetronomeProps) {
         </CardContent>
       </Card>
       
-      <div className="w-full">
+      <div className={cn("w-full", isFullScreen ? "hidden" : "block")}>
         <Slider
           value={[bpm]}
           onValueChange={(value) => setBpm(value[0])}
@@ -84,16 +110,10 @@ export default function Metronome({ isFullScreen }: MetronomeProps) {
         />
       </div>
       
-      <div className="flex items-center gap-4">
-        {!isRunning ? (
-          <Button size="lg" onClick={start} className="w-40 bg-green-500 hover:bg-green-600 text-white">
-            <Play className="mr-2 h-5 w-5" /> Start
+      <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>
+          <Button size="lg" onClick={handleStartStop} className={cn("w-40 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")}>
+            {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
           </Button>
-        ) : (
-          <Button size="lg" onClick={stop} className="w-40 bg-red-500 hover:bg-red-600 text-white">
-            <Pause className="mr-2 h-5 w-5" /> Stop
-          </Button>
-        )}
       </div>
     </div>
   );

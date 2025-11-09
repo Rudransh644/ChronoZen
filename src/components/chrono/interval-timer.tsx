@@ -19,10 +19,11 @@ const formatTime = (time: number) => {
 };
 
 interface IntervalTimerProps {
-    isFullScreen: boolean;
+  isFullScreen: boolean;
+  setControls?: (controls: { startStop: () => void; reset: () => void; }) => void;
 }
 
-export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
+export default function IntervalTimer({ isFullScreen, setControls }: IntervalTimerProps) {
   const [workDuration, setWorkDuration] = useState(25 * 60 * 1000);
   const [restDuration, setRestDuration] = useState(5 * 60 * 1000);
   const [totalIntervals, setTotalIntervals] = useState(4);
@@ -54,7 +55,28 @@ export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
     setCurrentPhase('work');
     setTime(workDuration);
   }, [stop, workDuration]);
+  
+  const start = useCallback(() => {
+    setIsRunning(true);
+    endTimeRef.current = Date.now() + time;
+    intervalRef.current = setInterval(() => {
+      const newTime = endTimeRef.current - Date.now();
+      if (newTime <= 0) {
+        nextPhase();
+      } else {
+        setTime(newTime);
+      }
+    }, 50);
+  }, [time, nextPhase]);
 
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+        stop();
+    } else {
+        start();
+    }
+  }, [isRunning, start, stop]);
+  
   const nextPhase = useCallback(() => {
     stop();
     if (currentPhase === 'work' && currentInterval <= totalIntervals) {
@@ -72,20 +94,8 @@ export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
       reset();
       playSound("G5");
     }
-  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset]);
+  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, start]);
 
-  const start = useCallback(() => {
-    setIsRunning(true);
-    endTimeRef.current = Date.now() + time;
-    intervalRef.current = setInterval(() => {
-      const newTime = endTimeRef.current - Date.now();
-      if (newTime <= 0) {
-        nextPhase();
-      } else {
-        setTime(newTime);
-      }
-    }, 50);
-  }, [time, nextPhase]);
 
   const skip = useCallback(() => {
     nextPhase();
@@ -114,6 +124,12 @@ export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
   };
   
   useEffect(() => {
+    if (setControls) {
+      setControls({ startStop: handleStartStop, reset });
+    }
+  }, [setControls, handleStartStop, reset]);
+
+  useEffect(() => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
   
@@ -137,7 +153,7 @@ export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
         {formatTime(time)}
       </div>
 
-      <div className="w-full max-w-sm">
+      <div className={cn("w-full max-w-sm", isFullScreen ? "hidden" : "block")}>
         <Progress value={progress} className={`h-3 ${currentPhase === 'work' ? '[&>div]:bg-green-500' : '[&>div]:bg-blue-500'}`} />
         <div className="flex justify-between text-sm text-muted-foreground mt-2">
             <span>Interval</span>
@@ -145,16 +161,10 @@ export default function IntervalTimer({ isFullScreen }: IntervalTimerProps) {
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
-        {!isRunning ? (
-          <Button size="lg" onClick={start} className="w-28 bg-green-500 hover:bg-green-600 text-white">
-            <Play className="mr-2 h-5 w-5" /> Start
-          </Button>
-        ) : (
-          <Button size="lg" onClick={stop} className="w-28 bg-red-500 hover:bg-red-600 text-white">
-            <Pause className="mr-2 h-5 w-5" /> Pause
-          </Button>
-        )}
+      <div className={cn("flex items-center gap-4", isFullScreen ? "hidden" : "flex")}>
+        <Button size="lg" onClick={handleStartStop} className={cn("w-28 text-white", isRunning ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600")}>
+          {isRunning ? <><Pause className="mr-2 h-5 w-5" /> Stop</> : <><Play className="mr-2 h-5 w-5" /> Start</>}
+        </Button>
         <Button size="lg" variant="outline" onClick={reset}><RotateCcw className="h-5 w-5" /></Button>
         <Button size="lg" variant="outline" onClick={skip}><Forward className="h-5 w-5" /></Button>
         
