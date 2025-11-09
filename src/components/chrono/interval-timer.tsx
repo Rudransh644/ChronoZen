@@ -67,15 +67,7 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
         setTime(newTime);
       }
     }, 50);
-  }, [time, nextPhase]);
-
-  const handleStartStop = useCallback(() => {
-    if (isRunning) {
-        stop();
-    } else {
-        start();
-    }
-  }, [isRunning, start, stop]);
+  }, [time]);
   
   const nextPhase = useCallback(() => {
     stop();
@@ -94,8 +86,15 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
       reset();
       playSound("G5");
     }
-  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, start]);
+  }, [currentPhase, currentInterval, totalIntervals, workDuration, restDuration, isRunning, reset, start, stop]);
 
+  const handleStartStop = useCallback(() => {
+    if (isRunning) {
+        stop();
+    } else {
+        start();
+    }
+  }, [isRunning, start, stop]);
 
   const skip = useCallback(() => {
     nextPhase();
@@ -128,6 +127,26 @@ export default function IntervalTimer({ isFullScreen, setControls }: IntervalTim
       setControls({ startStop: handleStartStop, reset });
     }
   }, [setControls, handleStartStop, reset]);
+
+  // Add nextPhase to start's dependency array
+  useEffect(() => {
+    if (isRunning) {
+      const id = setInterval(() => {
+        const newTime = endTimeRef.current - Date.now();
+        if (newTime <= 0) {
+          nextPhase();
+        } else {
+          setTime(newTime);
+        }
+      }, 50);
+      intervalRef.current = id;
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [isRunning, nextPhase]);
 
   useEffect(() => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
