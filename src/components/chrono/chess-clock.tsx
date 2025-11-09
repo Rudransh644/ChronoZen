@@ -37,6 +37,9 @@ export default function ChessClock({ isFullScreen, setControls }: ChessClockProp
 
   const playSound = async (type: 'switch' | 'timeout' = 'switch') => {
     await Tone.start();
+    if (navigator.vibrate) {
+        navigator.vibrate(type === 'switch' ? 50 : [200, 100, 200]);
+    }
     if (type === 'switch') {
         if (!synthRef.current) {
             synthRef.current = new Tone.Synth().toDestination();
