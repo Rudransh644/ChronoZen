@@ -17,6 +17,7 @@ import {
   Moon,
   User,
   Brain,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ import Dashboard from '@/components/chrono/dashboard';
 import { useTheme } from 'next-themes';
 import PomodoroTimer from '@/components/chrono/pomodoro-timer';
 import { AuthModal } from '@/components/chrono/auth-modal';
+import ChessClock from '@/components/chrono/chess-clock';
 
 export type ToolName =
   | 'Dashboard'
@@ -42,7 +44,8 @@ export type ToolName =
   | 'Pomodoro'
   | 'Interval Timer'
   | 'Alarm Clock'
-  | 'Metronome';
+  | 'Metronome'
+  | 'Chess Clock';
 
 export const toolConfig = {
   'Dashboard': { name: 'Dashboard' as ToolName, icon: <HomeIcon />, gradient: 'bg-background' },
@@ -53,6 +56,7 @@ export const toolConfig = {
   'Interval Timer': { name: 'Interval Timer' as ToolName, icon: <Repeat />, gradient: 'tool-gradient-red' },
   'Alarm Clock': { name: 'Alarm Clock' as ToolName, icon: <AlarmClock />, gradient: 'tool-gradient-yellow' },
   'Metronome': { name: 'Metronome' as ToolName, icon: <Gauge />, gradient: 'tool-gradient-red' },
+  'Chess Clock': { name: 'Chess Clock' as ToolName, icon: <Users />, gradient: 'tool-gradient-gray' },
 };
 
 const tools = Object.values(toolConfig);
@@ -145,6 +149,8 @@ export default function Home() {
         return <AlarmClockTool isFullScreen={isFullScreen} />;
       case 'Metronome':
         return <Metronome isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
+      case 'Chess Clock':
+        return <ChessClock isFullScreen={isFullScreen} setControls={handleSetToolControls} />;
       default:
         return <Dashboard setActiveTool={setActiveTool} />;
     }
